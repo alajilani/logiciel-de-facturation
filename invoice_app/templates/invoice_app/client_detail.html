@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Client - Application de Facturation{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1><i class="bi bi-person"></i> {{ client.name }}</h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'client-update' client.id %}" class="btn btn-warning">
+                <i class="bi bi-pencil"></i> Modifier
+            </a>
+            <a href="{% url 'client-delete' client.id %}" class="btn btn-danger">
+                <i class="bi bi-trash"></i> Supprimer
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Informations</h5>
+                </div>
+                <div class="card-body">
+                    <p>
+                        <strong>Email:</strong> {{ client.email }}<br>
+                        <strong>Téléphone:</strong> {{ client.phone }}<br>
+                        <strong>Pays:</strong> {{ client.country }}<br>
+                        <strong>TVA Intracommunautaire:</strong> {{ client.tva_intra }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Adresses</h5>
+                </div>
+                <div class="card-body">
+                    <p>
+                        <strong>Livraison:</strong><br>
+                        {{ client.delivery_address }}<br><br>
+                        <strong>Facturation:</strong><br>
+                        {{ client.billing_address }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Factures</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Numéro</th>
+                        <th>Date</th>
+                        <th>Total</th>
+                        <th>Statut</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for invoice in invoices %}
+                    <tr>
+                        <td><a href="{% url 'invoice-detail' invoice.id %}">{{ invoice.invoice_number }}</a></td>
+                        <td>{{ invoice.date|date:"d/m/Y" }}</td>
+                        <td>{{ invoice.total|floatformat:2 }}€</td>
+                        <td>
+                            {% if invoice.payment_status == 'paid' %}
+                                <span class="badge bg-success">Payée</span>
+                            {% elif invoice.payment_status == 'pending' %}
+                                <span class="badge bg-warning">En attente</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">Aucune facture</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a href="{% url 'client-list' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Retour
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Clients - Application de Facturation{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1><i class="bi bi-people"></i> Clients</h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'client-create' %}" class="btn btn-primary">
+                <i class="bi bi-person-plus"></i> Ajouter un client
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th>Email</th>
+                        <th>Téléphone</th>
+                        <th>Pays</th>
+                        <th>Factures</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for client in clients %}
+                    <tr>
+                        <td><strong>{{ client.name }}</strong></td>
+                        <td>{{ client.email }}</td>
+                        <td>{{ client.phone }}</td>
+                        <td>{{ client.country }}</td>
+                        <td><span class="badge bg-info">{{ client.invoices.count }}</span></td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'client-detail' client.id %}" class="btn btn-sm btn-info">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'client-update' client.id %}" class="btn btn-sm btn-warning">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{% url 'client-delete' client.id %}" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">Aucun client</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

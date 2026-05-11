@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}{{ invoice.invoice_number }} - Application de Facturation{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1><i class="bi bi-file-text"></i> {{ invoice.invoice_number }}</h1>
+            <p class="text-muted">{{ invoice.client.name }}</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'invoice-update' invoice.id %}" class="btn btn-warning">
+                <i class="bi bi-pencil"></i> Modifier
+            </a>
+            <a href="{% url 'export-pdf' invoice.id %}" class="btn btn-danger">
+                <i class="bi bi-file-pdf"></i> PDF
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Invoice Details -->
+        <div class="col-md-8">
+            <!-- Header -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Informations</h6>
+                            <p>
+                                <strong>Date:</strong> {{ invoice.date|date:"d/m/Y" }}<br>
+                                <strong>Échéance:</strong> {{ invoice.due_date|date:"d/m/Y" }}<br>
+                                <strong>Paiement:</strong> {{ invoice.get_payment_method_display }}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Client</h6>
+                            <p>
+                                <strong>{{ invoice.client.name }}</strong><br>
+                                {{ invoice.client.delivery_address }}<br>
+                                {{ invoice.client.country }}<br>
+                                {% if invoice.client.email %}Email: {{ invoice.client.email }}{% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Items -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Articles</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th class="text-end">Quantité</th>
+                                <th class="text-end">Prix U.</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                            <tr>
+                                <td>{{ item.description }}</td>
+                                <td class="text-end">{{ item.quantity }}</td>
+                                <td class="text-end">{{ item.price|floatformat:2 }}€</td>
+                                <td class="text-end"><strong>{{ item.total|floatformat:2 }}€</strong></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Payments -->
+            {% if payments %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Paiements</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Montant</th>
+                                <th>Méthode</th>
+                                <th>Référence</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payment in payments %}
+                            <tr>
+                                <td>{{ payment.payment_date|date:"d/m/Y" }}</td>
+                                <td>{{ payment.amount|floatformat:2 }}€</td>
+                                <td>{{ payment.payment_method }}</td>
+                                <td>{{ payment.reference }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-md-4">
+            <!-- Status -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h6 class="card-title">Statut</h6>
+                    <div class="mb-3">
+                        {% if invoice.payment_status == 'paid' %}
+                            <span class="badge bg-success" style="font-size: 1rem;">Payée</span>
+                        {% elif invoice.payment_status == 'pending' %}
+                            <span class="badge bg-warning" style="font-size: 1rem;">En attente</span>
+                        {% elif invoice.payment_status == 'partial' %}
+                            <span class="badge bg-info" style="font-size: 1rem;">Partiellement payée</span>
+                        {% elif invoice.payment_status == 'overdue' %}
+                            <span class="badge bg-danger" style="font-size: 1rem;">En retard</span>
+                        {% endif %}
+                    </div>
+                    <hr>
+                    <p class="mb-0">
+                        <strong>Montant payé:</strong> {{ invoice.amount_paid|floatformat:2 }}€<br>
+                        <strong>Montant dû:</strong> {{ invoice.remaining_amount|floatformat:2 }}€
+                    </p>
+                    {% if invoice.remaining_amount > 0 %}
+                    <a href="{% url 'add-payment' invoice.id %}" class="btn btn-success btn-sm mt-3 w-100">
+                        <i class="bi bi-plus-circle"></i> Enregistrer un paiement
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Totals -->
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">Totaux</h6>
+                    <table class="table table-sm mb-0">
+                        <tr>
+                            <td>Sous-total:</td>
+                            <td class="text-end">{{ invoice.subtotal|floatformat:2 }}€</td>
+                        </tr>
+                        <tr>
+                            <td>Remise:</td>
+                            <td class="text-end">-{{ invoice.remise_amount|floatformat:2 }}€</td>
+                        </tr>
+                        <tr>
+                            <td>Rabais:</td>
+                            <td class="text-end">-{{ invoice.rabais_amount|floatformat:2 }}€</td>
+                        </tr>
+                        <tr>
+                            <td>Escompte:</td>
+                            <td class="text-end">-{{ invoice.escompte_amount|floatformat:2 }}€</td>
+                        </tr>
+                        <tr>
+                            <td>TVA (20%):</td>
+                            <td class="text-end">{{ invoice.tva_amount|floatformat:2 }}€</td>
+                        </tr>
+                        <tr class="border-top">
+                            <td><strong>TOTAL TTC:</strong></td>
+                            <td class="text-end"><strong>{{ invoice.total|floatformat:2 }}€</strong></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a href="{% url 'invoice-list' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Retour aux factures
+        </a>
+    </div>
+</div>
+{% endblock %}

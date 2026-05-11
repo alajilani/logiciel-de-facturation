@@ -1,0 +1,389 @@
+{% extends 'base.html' %}
+
+{% block title %}Statistiques Avancées{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header with period selector -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="mb-0">📊 Statistiques Avancées</h1>
+            <p class="text-muted">Analyse détaillée de vos performances financières</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <form method="get" class="d-inline">
+                <select name="period" class="form-select d-inline-block" style="width: auto;" onchange="this.form.submit()">
+                    <option value="3" {% if period == '3' %}selected{% endif %}>3 derniers mois</option>
+                    <option value="6" {% if period == '6' %}selected{% endif %}>6 derniers mois</option>
+                    <option value="12" {% if period == '12' %}selected{% endif %}>12 derniers mois</option>
+                    <option value="all" {% if period == 'all' %}selected{% endif %}>Toute l'année</option>
+                </select>
+            </form>
+        </div>
+    </div>
+
+    <!-- KEY PERFORMANCE INDICATORS -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1 small">💰 Revenus Encaissés</p>
+                            <h3 class="mb-0">{{ total_revenue|floatformat:2 }} €</h3>
+                        </div>
+                        <span class="badge bg-success">+{{ payment_rate|floatformat:1 }}%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1 small">⏳ Revenus En Attente</p>
+                            <h3 class="mb-0">{{ pending_revenue|floatformat:2 }} €</h3>
+                        </div>
+                        <span class="badge bg-warning">{{ pending_invoices }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1 small">⚠️ Factures Retard</p>
+                            <h3 class="mb-0">{{ overdue_invoices }}</h3>
+                        </div>
+                        <span class="badge bg-danger">À relancer</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1 small">📈 Moyenne par Facture</p>
+                            <h3 class="mb-0">{{ average_invoice|floatformat:2 }} €</h3>
+                        </div>
+                        <span class="badge bg-info">AVG</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom-0 py-3">
+                    <h5 class="mb-0">📉 Revenus par Mois</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="revenueChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom-0 py-3">
+                    <h5 class="mb-0">🎯 Statut des Factures</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="invoiceStatusChart" height="200"></canvas>
+                    <div class="mt-3 small">
+                        <div><span class="badge bg-success">Payées:</span> {{ paid_invoices }}</div>
+                        <div><span class="badge bg-warning">En attente:</span> {{ pending_invoices }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOP PRODUCTS & CLIENTS -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom-0 py-3">
+                    <h5 class="mb-0">🏆 Top 10 Produits</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Produit</th>
+                                    <th class="text-end">Qté</th>
+                                    <th class="text-end">Revenus</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in top_products %}
+                                <tr>
+                                    <td>
+                                        <small class="text-truncate">{{ product.product__name }}</small>
+                                    </td>
+                                    <td class="text-end"><small>{{ product.total_quantity }}</small></td>
+                                    <td class="text-end"><small class="fw-bold">{{ product.total_revenue|floatformat:2 }} €</small></td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-4">Aucun produit vendu</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom-0 py-3">
+                    <h5 class="mb-0">⭐ Top 10 Clients</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Client</th>
+                                    <th class="text-center">Factures</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for client in top_clients %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'client-detail' client.client__id %}" class="text-decoration-none">
+                                            <small>{{ client.client__name }}</small>
+                                        </a>
+                                    </td>
+                                    <td class="text-center"><small class="badge bg-light text-dark">{{ client.invoice_count }}</small></td>
+                                    <td class="text-end"><small class="fw-bold">{{ client.total_amount|floatformat:2 }} €</small></td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-4">Aucun client</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QUOTE STATISTICS -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom-0 py-3">
+                    <h5 class="mb-0">📋 Statistiques sur les Devis</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <div class="p-3 bg-light rounded">
+                                <p class="text-muted mb-1 small">Total Devis</p>
+                                <h4 class="mb-0">{{ total_quotes }}</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="p-3 bg-light rounded">
+                                <p class="text-muted mb-1 small">Devis Acceptés</p>
+                                <h4 class="mb-0 text-success">{{ accepted_quotes }} <small class="text-muted fs-6">({{ quote_conversion_rate|floatformat:1 }}%)</small></h4>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="p-3 bg-light rounded">
+                                <p class="text-muted mb-1 small">Devis Rejetés</p>
+                                <h4 class="mb-0 text-danger">{{ rejected_quotes }}</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="p-3 bg-light rounded">
+                                <p class="text-muted mb-1 small">Revenus Devis Convertis</p>
+                                <h4 class="mb-0">{{ quote_revenue|floatformat:2 }} €</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CLIENT & PAYMENT STATISTICS -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom-0 py-3">
+                    <h5 class="mb-0">👥 Statistiques Clients</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <p class="text-muted mb-1 small">Total Clients</p>
+                            <h4 class="mb-0">{{ total_clients }}</h4>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <p class="text-muted mb-1 small">Nouveaux Clients</p>
+                            <h4 class="mb-0">{{ new_clients }}</h4>
+                        </div>
+                        <div class="col-12">
+                            <p class="text-muted mb-1 small">Valeur Moyenne Client</p>
+                            <h4 class="mb-0">{{ avg_client_value|floatformat:2 }} €</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom-0 py-3">
+                    <h5 class="mb-0">💳 Méthodes de Paiement</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Méthode</th>
+                                    <th class="text-center">Nb</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for method in payment_methods %}
+                                <tr>
+                                    <td><small>{{ method.payment_method }}</small></td>
+                                    <td class="text-center"><small>{{ method.count }}</small></td>
+                                    <td class="text-end"><small class="fw-bold">{{ method.total|floatformat:2 }} €</small></td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-4">Aucun paiement</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DISCOUNT STATISTICS -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom-0 py-3">
+                    <h5 class="mb-0">🏷️ Statistiques Réductions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="text-muted mb-1 small">Total Réductions Accordées</p>
+                            <h4 class="mb-0">{{ total_discounts|floatformat:2 }} €</h4>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="text-muted mb-1 small">% du Chiffre d'Affaires HT</p>
+                            <h4 class="mb-0">{{ discount_percentage|floatformat:2 }} %</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BACK BUTTON -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">← Retour au Dashboard</a>
+        </div>
+    </div>
+</div>
+
+<!-- CHART.JS LIBRARY -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // Revenue Chart
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    const revenueChart = new Chart(revenueCtx, {
+        type: 'line',
+        data: {
+            labels: {{ months_labels|safe }},
+            datasets: [{
+                label: 'Revenus (€)',
+                data: {{ months_data|safe }},
+                borderColor: '#28a745',
+                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#28a745',
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Montant (€)'
+                    }
+                }
+            }
+        }
+    });
+    
+    // Invoice Status Chart
+    const statusCtx = document.getElementById('invoiceStatusChart').getContext('2d');
+    const statusChart = new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Payées', 'En attente'],
+            datasets: [{
+                data: [{{ paid_invoices }}, {{ pending_invoices }}],
+                backgroundColor: ['#28a745', '#ffc107'],
+                borderColor: ['#fff', '#fff'],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

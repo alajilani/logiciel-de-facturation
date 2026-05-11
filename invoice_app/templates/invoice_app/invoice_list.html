@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Factures - FactureApp{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <h1><i class="bi bi-file-text"></i> Factures</h1>
+    <div class="list-actions">
+        <a href="{% url 'invoice-create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Nouvelle facture
+        </a>
+        <a href="{% url 'export-excel' %}" class="btn btn-success">
+            <i class="bi bi-file-earmark-excel"></i> Exporter Excel
+        </a>
+    </div>
+</div>
+
+<!-- Filter Panel -->
+<div class="filter-panel">
+    <form method="get" class="form-group-row">
+        <div>
+            <label class="filter-group-label">Client</label>
+            {{ form.client }}
+        </div>
+        <div>
+            <label class="filter-group-label">Statut</label>
+            {{ form.payment_status }}
+        </div>
+        <div>
+            <label class="filter-group-label">Du</label>
+            {{ form.date_from }}
+        </div>
+        <div>
+            <label class="filter-group-label">Au</label>
+            {{ form.date_to }}
+        </div>
+        <div style="align-self: flex-end;">
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-funnel"></i> Filtrer
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Invoices Table -->
+<div class="card">
+    <div class="table-container">
+        {% if invoices %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Numéro</th>
+                        <th>Client</th>
+                        <th>Date</th>
+                        <th>Montant HT</th>
+                        <th>TVA</th>
+                        <th>Total TTC</th>
+                        <th>Statut</th>
+                        <th style="text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for invoice in invoices %}
+                    <tr>
+                        <td><strong>{{ invoice.invoice_number }}</strong></td>
+                        <td>{{ invoice.client.name }}</td>
+                        <td>{{ invoice.date|date:"d/m/Y" }}</td>
+                        <td>{{ invoice.subtotal|floatformat:2 }}€</td>
+                        <td>{{ invoice.tva_amount|floatformat:2 }}€</td>
+                        <td><strong style="color: var(--primary-color);">{{ invoice.total|floatformat:2 }}€</strong></td>
+                        <td>
+                            {% if invoice.payment_status == 'paid' %}
+                                <span class="badge bg-success">✓ Payée</span>
+                            {% elif invoice.payment_status == 'pending' %}
+                                <span class="badge bg-warning">⏱ En attente</span>
+                            {% elif invoice.payment_status == 'partial' %}
+                                <span class="badge bg-info">◐ Partielle</span>
+                            {% elif invoice.payment_status == 'overdue' %}
+                                <span class="badge bg-danger">⚠ En retard</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                                <a href="{% url 'invoice-detail' invoice.id %}" class="btn btn-sm action-btn" title="Voir" style="background: rgba(37, 99, 235, 0.1); color: var(--primary-color);">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'invoice-update' invoice.id %}" class="btn btn-sm action-btn" title="Modifier" style="background: rgba(245, 158, 11, 0.1); color: var(--warning-color);">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{% url 'export-pdf' invoice.id %}" class="btn btn-sm action-btn" title="PDF" style="background: rgba(239, 68, 68, 0.1); color: var(--danger-color);">
+                                    <i class="bi bi-file-pdf"></i>
+                                </a>
+                                <a href="{% url 'invoice-delete' invoice.id %}" class="btn btn-sm action-btn" title="Supprimer" style="background: rgba(107, 114, 128, 0.1); color: var(--text-secondary);">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="bi bi-inbox"></i>
+                </div>
+                <p>Aucune facture trouvée</p>
+                <a href="{% url 'invoice-create' %}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus-circle"></i> Créer une facture
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if is_paginated %}
+<nav class="mt-4" style="display: flex; justify-content: center;">
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1">
+                    <i class="bi bi-chevron-double-left"></i> Première
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+                    <i class="bi bi-chevron-left"></i> Précédente
+                </a>
+            </li>
+        {% endif %}
+        
+        <li class="page-item">
+            <span class="page-link">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+                    Suivante <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">
+                    Dernière <i class="bi bi-chevron-double-right"></i>
+                </a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

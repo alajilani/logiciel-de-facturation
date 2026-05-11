@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Confirmer la suppression{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Attention</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">Êtes-vous sûr de vouloir supprimer ce produit?</p>
+                    <p class="text-muted"><strong>{{ object.name }}</strong></p>
+                    
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Oui, supprimer
+                        </button>
+                        <a href="{% url 'product-list' %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Annuler
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

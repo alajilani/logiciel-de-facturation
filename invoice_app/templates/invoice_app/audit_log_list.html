@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+
+{% block title %}Journal d'Audit{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="mb-0">📋 Journal d'Audit</h1>
+            <p class="text-muted">Historique de toutes les modifications</p>
+        </div>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom-0 py-3">
+                    <h5 class="mb-0">🔍 Filtrer l'historique</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Action</label>
+                            <select name="action" class="form-select">
+                                <option value="">-- Toutes les actions --</option>
+                                {% for key, value in actions.items %}
+                                <option value="{{ key }}" {% if request.GET.action == key %}selected{% endif %}>{{ value }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label class="form-label">Modèle</label>
+                            <select name="model" class="form-select">
+                                <option value="">-- Tous les modèles --</option>
+                                {% for key, value in models.items %}
+                                <option value="{{ key }}" {% if request.GET.model == key %}selected{% endif %}>{{ value }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label class="form-label">Utilisateur</label>
+                            <input type="text" name="user" class="form-control" placeholder="Nom utilisateur" value="{{ request.GET.user }}">
+                        </div>
+                        
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-search"></i> Filtrer
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <hr class="my-3">
+                    
+                    <form method="get" class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Date de début</label>
+                            <input type="date" name="date_from" class="form-control" value="{{ request.GET.date_from }}">
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">Date de fin</label>
+                            <input type="date" name="date_to" class="form-control" value="{{ request.GET.date_to }}">
+                        </div>
+                        
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-secondary w-100">
+                                <i class="bi bi-funnel"></i> Par date
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audit Log Table -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom-0 py-3">
+                    <h5 class="mb-0">Historique des modifications</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date/Heure</th>
+                                    <th>Action</th>
+                                    <th>Modèle</th>
+                                    <th>Objet</th>
+                                    <th>Utilisateur</th>
+                                    <th>Adresse IP</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in audit_logs %}
+                                <tr class="cursor-pointer" data-bs-toggle="collapse" data-bs-target="#log-{{ log.id }}">
+                                    <td>
+                                        <small>{{ log.timestamp|date:"d/m/Y H:i" }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if log.action == 'create' %}success{% elif log.action == 'update' %}info{% elif log.action == 'delete' %}danger{% else %}secondary{% endif %}">
+                                            {{ log.get_action_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small><strong>{{ log.get_model_display }}</strong></small>
+                                    </td>
+                                    <td>
+                                        <small>{{ log.object_str|truncatewords:5 }}</small>
+                                    </td>
+                                    <td>
+                                        <small>{{ log.user|default:"Anonymous" }}</small>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ log.ip_address|default:"-" }}</small>
+                                    </td>
+                                </tr>
+                                <tr class="collapse" id="log-{{ log.id }}">
+                                    <td colspan="6">
+                                        <div class="p-3 bg-light">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h6>Valeurs précédentes:</h6>
+                                                    {% if log.old_values %}
+                                                    <ul class="list-unstyled small">
+                                                        {% for key, value in log.old_values.items %}
+                                                        <li><strong>{{ key }}:</strong> <code>{{ value }}</code></li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                    {% else %}
+                                                    <p class="text-muted"><em>Aucune valeur précédente</em></p>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6>Nouvelles valeurs:</h6>
+                                                    {% if log.new_values %}
+                                                    <ul class="list-unstyled small">
+                                                        {% for key, value in log.new_values.items %}
+                                                        <li><strong>{{ key }}:</strong> <code>{{ value }}</code></li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                    {% else %}
+                                                    <p class="text-muted"><em>Aucune nouvelle valeur</em></p>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        Aucun journal d'audit trouvé
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <nav aria-label="Page navigation" class="mb-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1{% if request.GET.action %}&action={{ request.GET.action }}{% endif %}{% if request.GET.model %}&model={{ request.GET.model }}{% endif %}">
+                    Première
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.action %}&action={{ request.GET.action }}{% endif %}{% if request.GET.model %}&model={{ request.GET.model }}{% endif %}">
+                    Précédente
+                </a>
+            </li>
+            {% endif %}
+            
+            <li class="page-item active">
+                <span class="page-link">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+            </li>
+            
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.action %}&action={{ request.GET.action }}{% endif %}{% if request.GET.model %}&model={{ request.GET.model }}{% endif %}">
+                    Suivante
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.action %}&action={{ request.GET.action }}{% endif %}{% if request.GET.model %}&model={{ request.GET.model }}{% endif %}">
+                    Dernière
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    <!-- Info Box -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                <strong><i class="bi bi-info-circle"></i> Information:</strong>
+                Le journal d'audit enregistre toutes les modifications apportées aux données de l'application.
+                Cliquez sur une ligne pour voir les détails des modifications.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .cursor-pointer {
+        cursor: pointer;
+    }
+    
+    .cursor-pointer:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}

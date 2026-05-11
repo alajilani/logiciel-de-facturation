@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Modifier une facture{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4"><i class="bi bi-pencil"></i> Facture {{ invoice.invoice_number }}</h1>
+    
+    <!-- Invoice Info -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Informations de base</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" novalidate class="mb-3">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Client *</label>
+                        {{ form.client }}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Date</label>
+                        {{ form.date }}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Échéance</label>
+                        {{ form.due_date }}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Paiement</label>
+                        {{ form.payment_method }}
+                    </div>
+                </div>
+                <button type="submit" name="save_invoice" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Enregistrer les modifications
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Items -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Articles</h5>
+        </div>
+        <div class="card-body">
+            {% if items %}
+            <div class="table-responsive mb-3">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>Quantité</th>
+                            <th>Prix U.</th>
+                            <th>Total</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>{{ item.description }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>{{ item.price|floatformat:2 }}€</td>
+                            <td>{{ item.total|floatformat:2 }}€</td>
+                            <td>
+                                <a href="{% url 'invoice-delete-item' invoice.id item.id %}" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            <form method="post" novalidate class="border-top pt-3">
+                {% csrf_token %}
+                <h6 class="mb-3">Ajouter un article</h6>
+                <div class="row">
+                    <div class="col-md-4 mb-2">
+                        {{ item_form.description }}
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        {{ item_form.quantity }}
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        {{ item_form.price }}
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        {{ item_form.product }}
+                    </div>
+                    <div class="col-md-1 mb-2">
+                        <button type="submit" name="add_item" class="btn btn-success w-100">
+                            <i class="bi bi-plus"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Discounts -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Réductions</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-4">
+                        <h6>Remise</h6>
+                        <div class="mb-2">
+                            <label class="form-label">Pourcentage %</label>
+                            {{ discount_form.remise_percentage }}
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Montant €</label>
+                            {{ discount_form.remise_amount }}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Rabais</h6>
+                        <div class="mb-2">
+                            <label class="form-label">Pourcentage %</label>
+                            {{ discount_form.rabais_percentage }}
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Montant €</label>
+                            {{ discount_form.rabais_amount }}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Escompte</h6>
+                        <div class="mb-2">
+                            <label class="form-label">Pourcentage %</label>
+                            {{ discount_form.escompte_percentage }}
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Montant €</label>
+                            {{ discount_form.escompte_amount }}
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" name="update_discount" class="btn btn-primary mt-3">
+                    <i class="bi bi-save"></i> Mettre à jour les réductions
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="row">
+        <div class="col-md-8"></div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <td>Sous-total:</td>
+                            <td class="text-end"><strong>{{ invoice.subtotal|floatformat:2 }}€</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Réduction totale:</td>
+                            <td class="text-end">-{{ invoice.total_discount|floatformat:2 }}€</td>
+                        </tr>
+                        <tr>
+                            <td>TVA:</td>
+                            <td class="text-end">{{ invoice.tva_amount|floatformat:2 }}€</td>
+                        </tr>
+                        <tr class="border-top">
+                            <td><strong>Total TTC:</strong></td>
+                            <td class="text-end"><strong>{{ invoice.total|floatformat:2 }}€</strong></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a href="{% url 'invoice-list' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Retour
+        </a>
+        <a href="{% url 'export-pdf' invoice.id %}" class="btn btn-danger">
+            <i class="bi bi-file-pdf"></i> Exporter PDF
+        </a>
+    </div>
+</div>
+{% endblock %}

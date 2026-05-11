@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Produit - Application de Facturation{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1><i class="bi bi-box"></i> {{ product.name }}</h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'product-update' product.id %}" class="btn btn-warning">
+                <i class="bi bi-pencil"></i> Modifier
+            </a>
+            <a href="{% url 'product-delete' product.id %}" class="btn btn-danger">
+                <i class="bi bi-trash"></i> Supprimer
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Détails</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <tr>
+                            <td><strong>Référence:</strong></td>
+                            <td><code>{{ product.reference }}</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Prix:</strong></td>
+                            <td>{{ product.price|floatformat:2 }}€</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Description:</strong></td>
+                            <td>{{ product.description }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Créé:</strong></td>
+                            <td>{{ product.created_at|date:"d/m/Y H:i" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Modifié:</strong></td>
+                            <td>{{ product.updated_at|date:"d/m/Y H:i" }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a href="{% url 'product-list' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Retour
+        </a>
+    </div>
+</div>
+{% endblock %}
