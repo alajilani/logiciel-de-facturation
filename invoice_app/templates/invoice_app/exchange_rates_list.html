@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Taux de change - {% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>💱 Taux de Change</h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'dashboard' %}" class="btn btn-secondary">← Retour</a>
+        </div>
+    </div>
+
+    <!-- Ajouter nouveau taux -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Ajouter un nouveau taux de change</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" class="row g-3">
+                {% csrf_token %}
+                <div class="col-md-4">
+                    {{ form.from_currency }}
+                </div>
+                <div class="col-md-4">
+                    {{ form.to_currency }}
+                </div>
+                <div class="col-md-3">
+                    {{ form.rate }}
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Ajouter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Liste des taux -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Taux actuels</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>De</th>
+                        <th>Vers</th>
+                        <th>Taux</th>
+                        <th>Date</th>
+                        <th>Mise à jour</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rate in rates %}
+                    <tr>
+                        <td>
+                            <span class="badge bg-info">{{ rate.from_currency }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-success">{{ rate.to_currency }}</span>
+                        </td>
+                        <td><strong>{{ rate.rate }}</strong></td>
+                        <td>{{ rate.date|date:"d/m/Y" }}</td>
+                        <td><small class="text-muted">{{ rate.updated_at|date:"d/m/Y H:i" }}</small></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            Aucun taux de change enregistré
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

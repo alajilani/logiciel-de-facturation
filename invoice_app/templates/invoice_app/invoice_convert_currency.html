@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Convertir devise - {% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>💱 Convertir devise</h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'invoice-detail' invoice.id %}" class="btn btn-secondary">← Retour</a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Informations actuelles -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Devise actuelle</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Numéro:</strong> {{ invoice.invoice_number }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Client:</strong> {{ invoice.client.name }}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Date:</strong> {{ invoice.date|date:"d/m/Y" }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Montant:</strong> <span class="badge bg-success">{{ invoice.total }} {{ invoice.currency }}</span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Devise:</strong> {{ invoice.get_currency_display }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Taux de change:</strong> {{ invoice.exchange_rate }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conversion -->
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Sélectionner nouvelle devise</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="currency" class="form-label">Convertir vers:</label>
+                            <select name="currency" id="currency" class="form-control" required>
+                                <option value="">-- Sélectionner une devise --</option>
+                                {% for currency in currencies %}
+                                <option value="{{ currency }}">
+                                    {% if currency == 'EUR' %}Euro (€){% elif currency == 'USD' %}Dollar US ($){% elif currency == 'GBP' %}Livre Sterling (£){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <strong>ℹ️ Info:</strong> La conversion utilisera le taux de change de la base de données. Assurez-vous d'avoir ajouté un taux de change pour cette conversion dans les paramètres.
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-exchange-alt"></i> Convertir
+                            </button>
+                            <a href="{% url 'invoice-detail' invoice.id %}" class="btn btn-secondary">
+                                Annuler
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="alert alert-warning mt-4">
+                <strong>⚠️ Attention:</strong> La conversion modifiera la devise de la facture et sera enregistrée dans l'historique.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

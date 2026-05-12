@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Historique d'archivage - {% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>📋 Historique d'archivage</h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'invoice-detail' invoice.id %}" class="btn btn-secondary">← Retour</a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Informations facture -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Facture</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Numéro:</strong> {{ invoice.invoice_number }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Client:</strong> {{ invoice.client.name }}
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-md-6">
+                            <strong>Date:</strong> {{ invoice.date|date:"d/m/Y" }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Montant:</strong> {{ invoice.total }} {{ invoice.currency }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if archive_log %}
+            <!-- Statut actuel -->
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Statut actuel</h5>
+                </div>
+                <div class="card-body">
+                    {% if invoice.is_archived %}
+                    <div class="alert alert-warning">
+                        <strong>📦 Facture archivée</strong>
+                        <br>
+                        Archivée le {{ invoice.archived_at|date:"d/m/Y à H:i" }} par {{ invoice.archived_by }}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-success">
+                        <strong>✅ Facture active</strong>
+                        <br>
+                        Restaurée le {{ archive_log.unarchived_at|date:"d/m/Y à H:i" }} par {{ archive_log.unarchived_by }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Historique archivage -->
+            <div class="card mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Archivage</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Archivée par:</strong> {{ archive_log.archived_by }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Date:</strong> {{ archive_log.archived_at|date:"d/m/Y H:i" }}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <strong>Raison:</strong>
+                            <p class="text-muted mt-2">{{ archive_log.reason }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historique restauration -->
+            {% if archive_log.unarchived_at %}
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Restauration</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Restaurée par:</strong> {{ archive_log.unarchived_by }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Date:</strong> {{ archive_log.unarchived_at|date:"d/m/Y H:i" }}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <strong>Raison:</strong>
+                            <p class="text-muted mt-2">{{ archive_log.unarchive_reason }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Boutons d'action -->
+            <div class="d-flex gap-2">
+                {% if invoice.is_archived %}
+                <a href="{% url 'invoice-unarchive' invoice.id %}" class="btn btn-success">↩️ Restaurer</a>
+                {% else %}
+                <a href="{% url 'invoice-archive' invoice.id %}" class="btn btn-danger">📦 Archiver</a>
+                {% endif %}
+            </div>
+
+            {% else %}
+            <!-- Pas d'historique -->
+            <div class="alert alert-info">
+                <h5>Aucun historique d'archivage</h5>
+                <p>Cette facture n'a jamais été archivée.</p>
+                <a href="{% url 'invoice-archive' invoice.id %}" class="btn btn-danger">📦 Archiver</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

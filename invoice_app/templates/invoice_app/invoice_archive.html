@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Archiver facture - {% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>📦 Archiver la facture</h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'invoice-detail' invoice.id %}" class="btn btn-secondary">← Retour</a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Détails de la facture</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Numéro:</strong> {{ invoice.invoice_number }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Client:</strong> {{ invoice.client.name }}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Date:</strong> {{ invoice.date|date:"d/m/Y" }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Montant:</strong> {{ invoice.total }} {{ invoice.currency }}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Statut:</strong> <span class="badge {% if invoice.payment_status == 'paid' %}bg-success{% elif invoice.payment_status == 'partially_paid' %}bg-warning{% else %}bg-danger{% endif %}">
+                                {{ invoice.get_payment_status_display }}
+                            </span>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Devise:</strong> {{ invoice.currency }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Raison de l'archivage</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            {{ form.reason }}
+                            {% if form.reason.errors %}
+                            <div class="alert alert-danger mt-2">
+                                {{ form.reason.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-archive"></i> Archiver
+                            </button>
+                            <a href="{% url 'invoice-detail' invoice.id %}" class="btn btn-secondary">
+                                Annuler
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="alert alert-info mt-4">
+                <strong>⚠️ Attention:</strong> Une fois archivée, la facture sera marquée comme archivée et son historique sera enregistré.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

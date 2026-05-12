@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Recherche Avancée - {% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>🔍 Recherche Avancée</h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'dashboard' %}" class="btn btn-secondary">← Retour</a>
+        </div>
+    </div>
+
+    <!-- Formulaire de recherche -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Critères de recherche</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-6">
+                    {{ form.search_text }}
+                </div>
+                <div class="col-md-3">
+                    {{ form.search_type }}
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">Rechercher</button>
+                </div>
+                <div class="col-md-6">
+                    {{ form.date_from }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.date_to }}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if total_results > 0 %}
+    <!-- Résultats -->
+    <div class="alert alert-info">
+        <strong>{{ total_results }}</strong> résultat(s) trouvé(s)
+    </div>
+
+    <!-- Factures -->
+    {% if results.invoices %}
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">📄 Factures ({{ results.invoices|length }})</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Numéro</th>
+                        <th>Client</th>
+                        <th>Date</th>
+                        <th>Montant</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for invoice in results.invoices %}
+                    <tr>
+                        <td><strong>{{ invoice.invoice_number }}</strong></td>
+                        <td>{{ invoice.client.name }}</td>
+                        <td>{{ invoice.date|date:"d/m/Y" }}</td>
+                        <td>{{ invoice.total }} {{ invoice.currency }}</td>
+                        <td>
+                            <span class="badge {% if invoice.payment_status == 'paid' %}bg-success{% elif invoice.payment_status == 'partially_paid' %}bg-warning{% else %}bg-danger{% endif %}">
+                                {{ invoice.get_payment_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{% url 'invoice-detail' invoice.id %}" class="btn btn-sm btn-info">Voir</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Devis -->
+    {% if results.quotes %}
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">📋 Devis ({{ results.quotes|length }})</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Numéro</th>
+                        <th>Client</th>
+                        <th>Date</th>
+                        <th>Montant</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for quote in results.quotes %}
+                    <tr>
+                        <td><strong>{{ quote.quote_number }}</strong></td>
+                        <td>{{ quote.client.name }}</td>
+                        <td>{{ quote.date|date:"d/m/Y" }}</td>
+                        <td>{{ quote.total }} {{ quote.currency }}</td>
+                        <td>
+                            <span class="badge bg-info">{{ quote.get_status_display }}</span>
+                        </td>
+                        <td>
+                            <a href="{% url 'quote-detail' quote.id %}" class="btn btn-sm btn-info">Voir</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Clients -->
+    {% if results.clients %}
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">👥 Clients ({{ results.clients|length }})</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nom</th>
+                        <th>Email</th>
+                        <th>Téléphone</th>
+                        <th>Pays</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for client in results.clients %}
+                    <tr>
+                        <td><strong>{{ client.name }}</strong></td>
+                        <td>{{ client.email }}</td>
+                        <td>{{ client.phone }}</td>
+                        <td>{{ client.country }}</td>
+                        <td>
+                            <a href="{% url 'client-detail' client.id %}" class="btn btn-sm btn-info">Voir</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    {% if form.search_text.value or form.search_type.value %}
+    <div class="alert alert-warning text-center py-5">
+        <h5>Aucun résultat trouvé</h5>
+        <p class="text-muted">Essayez avec d'autres critères de recherche</p>
+    </div>
+    {% else %}
+    <div class="alert alert-info text-center py-5">
+        <p class="text-muted">Entrez des critères de recherche pour commencer</p>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+{% endblock %}
