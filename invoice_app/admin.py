@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     Client, Product, CompanyInfo, Invoice, InvoiceItem, Payment, Quote, QuoteItem, 
     Notification, EmailTemplate, AuditLog, AnomalyDetection, RevenueForecast, 
-    IntelligentAlert, AccountingSynchronization
+    IntelligentAlert, AccountingSynchronization, RealtimeNotification, AdvancedDashboard
 )
 
 @admin.register(Client)
@@ -205,3 +205,69 @@ class AccountingSynchronizationAdmin(admin.ModelAdmin):
         ('Erreurs', {'fields': ('error_message',)}),
         ('Historique', {'fields': ('created_by', 'created_at', 'completed_at'), 'classes': ('collapse',)}),
     )
+
+
+# TIER 4 - ADMIN CLASSES FOR NEW FEATURES
+
+@admin.register(RealtimeNotification)
+class RealtimeNotificationAdmin(admin.ModelAdmin):
+    """Admin for Real-time Notifications"""
+    list_display = ['notification_type', 'title', 'priority', 'is_read', 'user', 'created_at']
+    list_filter = ['notification_type', 'priority', 'is_read', 'created_at']
+    search_fields = ['title', 'message', 'user__username']
+    readonly_fields = ['created_at', 'read_at']
+    
+    fieldsets = (
+        ('Notification', {'fields': ('notification_type', 'priority', 'title', 'message')}),
+        ('Utilisateur', {'fields': ('user',)}),
+        ('Liens', {'fields': ('invoice', 'client', 'action_url')}),
+        ('Statut', {'fields': ('is_read', 'read_at', 'is_dismissed')}),
+        ('Expiration', {'fields': ('expires_at',)}),
+        ('Historique', {'fields': ('created_at',), 'classes': ('collapse',)}),
+    )
+    
+    actions = ['mark_as_read', 'mark_as_unread']
+    
+    def mark_as_read(self, request, queryset):
+        """Mark selected notifications as read"""
+        for notif in queryset:
+            notif.mark_as_read()
+        self.message_user(request, f"{queryset.count()} notifications marquées comme lues")
+    
+    def mark_as_unread(self, request, queryset):
+        """Mark selected notifications as unread"""
+        queryset.update(is_read=False, read_at=None)
+        self.message_user(request, f"{queryset.count()} notifications marquées comme non lues")
+    
+    mark_as_read.short_description = "Marquer comme lu"
+    mark_as_unread.short_description = "Marquer comme non lu"
+
+
+@admin.register(AdvancedDashboard)
+class AdvancedDashboardAdmin(admin.ModelAdmin):
+    """Admin for Advanced Dashboard Configuration"""
+    list_display = ['user', 'title', 'is_enabled', 'default_period', 'auto_refresh', 'last_accessed', 'total_views']
+    list_filter = ['is_enabled', 'default_period', 'auto_refresh', 'created_at']
+    search_fields = ['user__username', 'title']
+    readonly_fields = ['created_at', 'updated_at', 'last_accessed', 'total_views']
+    
+    fieldsets = (
+        ('Utilisateur & Général', {'fields': ('user', 'title', 'is_enabled')}),
+        ('Configuration des Widgets', {'fields': ('widgets_config', 'kpi_list')}),
+        ('Affichage', {'fields': ('default_period', 'color_scheme')}),
+        ('Rafraîchissement', {'fields': ('auto_refresh', 'refresh_interval')}),
+        ('Notifications', {'fields': ('enable_notifications', 'notification_thresholds')}),
+        ('Statistiques', {'fields': ('total_views', 'last_accessed'), 'classes': ('collapse',)}),
+        ('Historique', {'fields': ('created_at', 'updated_at'), 'classes': ('collapse',)}),
+    )
+    
+    actions = ['reset_dashboard']
+    
+    def reset_dashboard(self, request, queryset):
+        """Reset dashboard to default configuration"""
+        for dashboard in queryset:
+            dashboard.total_views = 0
+            dashboard.save()
+        self.message_user(request, f"{queryset.count()} tableaux de bord réinitialisés")
+    
+    reset_dashboard.short_description = "Réinitialiser la configuration"

@@ -552,3 +552,236 @@ class AccountingSynchronization(models.Model):
     
     def __str__(self):
         return f"{self.get_export_type_display()} ({self.get_status_display()}) - {self.start_date} à {self.end_date}"
+
+
+# TIER 4 - NOTIFICATIONS REAL-TIME & DASHBOARD AVANCÉ
+
+class RealtimeNotification(models.Model):
+    """Real-time notifications with WebSockets support"""
+    
+    NOTIFICATION_TYPES = [
+        ('anomaly_critical', 'Anomalie Critique'),
+        ('payment_received', 'Paiement Reçu'),
+        ('invoice_overdue', 'Facture en Retard'),
+        ('alert_acknowledged', 'Alerte Reconnue'),
+        ('forecast_updated', 'Prévision Mise à Jour'),
+        ('export_completed', 'Export Complété'),
+        ('system_alert', 'Alerte Système'),
+        ('new_invoice', 'Nouvelle Facture'),
+        ('new_quote', 'Nouveau Devis'),
+        ('payment_reminder', 'Rappel Paiement'),
+    ]
+    
+    PRIORITY_CHOICES = [
+        ('low', 'Basse'),
+        ('medium', 'Moyenne'),
+        ('high', 'Élevée'),
+        ('critical', 'Critique'),
+    ]
+    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        verbose_name="Utilisateur",
+        related_name="realtime_notifications"
+    )
+    
+    notification_type = models.CharField(
+        max_length=50,
+        choices=NOTIFICATION_TYPES,
+        verbose_name="Type"
+    )
+    
+    title = models.CharField(max_length=255, verbose_name="Titre")
+    message = models.TextField(verbose_name="Message")
+    priority = models.CharField(
+        max_length=20,
+        choices=PRIORITY_CHOICES,
+        default='medium',
+        verbose_name="Priorité"
+    )
+    
+    # Links to related objects
+    invoice = models.ForeignKey(
+        'Invoice',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        verbose_name="Facture liée"
+    )
+    
+    client = models.ForeignKey(
+        'Client',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        verbose_name="Client lié"
+    )
+    
+    # Status tracking
+    is_read = models.BooleanField(default=False, verbose_name="Est lu?")
+    read_at = models.DateTimeField(blank=True, null=True, verbose_name="Lu le")
+    is_dismissed = models.BooleanField(default=False, verbose_name="Est rejeté?")
+    
+    # Action link
+    action_url = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name="URL d'action"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
+    expires_at = models.DateTimeField(blank=True, null=True, verbose_name="Expire le")
+    
+    class Meta:
+        verbose_name = "Notification Real-time"
+        verbose_name_plural = "Notifications Real-time"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['priority', 'is_read']),
+            models.Index(fields=['notification_type']),
+        ]
+    
+    def __str__(self):
+        return f"{self.get_notification_type_display()} - {self.title}"
+    
+    def mark_as_read(self):
+        """Marquer notification comme lue"""
+        self.is_read = True
+        self.read_at = datetime.now()
+        self.save()
+
+
+class AdvancedDashboard(models.Model):
+    """Advanced Dashboard with custom KPIs and widgets"""
+    
+    WIDGET_TYPES = [
+        ('kpi_card', 'Carte KPI'),
+        ('chart_line', 'Graphique Linéaire'),
+        ('chart_bar', 'Graphique en Barres'),
+        ('chart_pie', 'Graphique Circulaire'),
+        ('chart_doughnut', 'Graphique Donut'),
+        ('table_data', 'Tableau de Données'),
+        ('stat_boxes', 'Boîtes Statistiques'),
+        ('recent_items', 'Éléments Récents'),
+        ('heatmap', 'Carte de Chaleur'),
+        ('timeline', 'Chronologie'),
+    ]
+    
+    PERIODS = [
+        ('daily', 'Quotidien'),
+        ('weekly', 'Hebdomadaire'),
+        ('monthly', 'Mensuel'),
+        ('quarterly', 'Trimestriel'),
+        ('yearly', 'Annuel'),
+        ('custom', 'Personnalisé'),
+    ]
+    
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        verbose_name="Utilisateur",
+        related_name="advanced_dashboard"
+    )
+    
+    # Dashboard Configuration
+    title = models.CharField(
+        max_length=255,
+        default="Tableau de Bord",
+        verbose_name="Titre"
+    )
+    
+    is_enabled = models.BooleanField(default=True, verbose_name="Activé?")
+    
+    # Widget Configuration (JSON)
+    widgets_config = models.TextField(
+        default="[]",
+        verbose_name="Configuration des widgets"
+    )  # JSON array of widget configs
+    
+    # KPI Configuration
+    kpi_list = models.TextField(
+        default="[]",
+        verbose_name="Liste des KPIs"
+    )  # JSON array of selected KPIs
+    
+    # Display Preferences
+    default_period = models.CharField(
+        max_length=20,
+        choices=PERIODS,
+        default='monthly',
+        verbose_name="Période par défaut"
+    )
+    
+    color_scheme = models.CharField(
+        max_length=50,
+        default='auto',
+        verbose_name="Schéma de couleur"
+    )  # 'auto', 'light', 'dark', 'custom'
+    
+    # Refresh Settings
+    auto_refresh = models.BooleanField(
+        default=True,
+        verbose_name="Rafraîchissement auto?"
+    )
+    
+    refresh_interval = models.IntegerField(
+        default=300,
+        verbose_name="Intervalle rafraîchissement (secondes)"
+    )
+    
+    # Notifications Settings
+    enable_notifications = models.BooleanField(
+        default=True,
+        verbose_name="Notifications activées?"
+    )
+    
+    notification_thresholds = models.TextField(
+        default="{}",
+        verbose_name="Seuils de notification"
+    )  # JSON object with thresholds
+    
+    # Performance Tracking
+    total_views = models.IntegerField(default=0, verbose_name="Total vues")
+    last_accessed = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name="Dernier accès"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Mis à jour le")
+    
+    class Meta:
+        verbose_name = "Tableau de Bord Avancé"
+        verbose_name_plural = "Tableaux de Bord Avancés"
+        indexes = [
+            models.Index(fields=['user', 'is_enabled']),
+        ]
+    
+    def __str__(self):
+        return f"Tableau de Bord - {self.user.username}"
+    
+    def get_kpis(self):
+        """Récupérer les KPIs configurés"""
+        import json
+        try:
+            return json.loads(self.kpi_list)
+        except:
+            return []
+    
+    def get_widgets(self):
+        """Récupérer les widgets configurés"""
+        import json
+        try:
+            return json.loads(self.widgets_config)
+        except:
+            return []
+    
+    def increment_views(self):
+        """Incrémenter le compteur de vues"""
+        self.total_views += 1
+        self.last_accessed = datetime.now()
+        self.save()

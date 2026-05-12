@@ -494,3 +494,111 @@ def ia_dashboard(request):
         'recent_alerts': recent_alerts,
     }
     return render(request, 'invoice_app/ia_dashboard.html', context)
+
+
+# ============================================================================
+# TIER 4 - REAL-TIME NOTIFICATIONS & ADVANCED DASHBOARD
+# ============================================================================
+
+from .models import RealtimeNotification, AdvancedDashboard
+
+
+@login_required
+def notification_list(request):
+    """Liste des notifications real-time"""
+    notifications = RealtimeNotification.objects.filter(user=request.user).order_by('-created_at')
+    unread_count = notifications.filter(is_read=False).count()
+    
+    paginator = Paginator(notifications, 15)
+    page_number = request.GET.get('page')
+    notifications = paginator.get_page(page_number)
+    
+    return render(request, 'invoice_app/notification_list.html', {
+        'notifications': notifications,
+        'unread_count': unread_count,
+    })
+
+
+@login_required
+def mark_notification_read(request, pk):
+    """Marquer notification comme lue"""
+    notification = get_object_or_404(RealtimeNotification, pk=pk, user=request.user)
+    notification.mark_as_read()
+    messages.success(request, "Notification marquée comme lue")
+    return redirect('notification_list')
+
+
+@login_required
+def advanced_dashboard_view(request):
+    """Tableau de bord avancé avec KPIs personnalisés"""
+    try:
+        dashboard = AdvancedDashboard.objects.get(user=request.user)
+    except AdvancedDashboard.DoesNotExist:
+        dashboard = AdvancedDashboard.objects.create(user=request.user)
+    
+    dashboard.increment_views()
+    
+    # Récupérer données pour KPIs
+    from django.db.models import Sum, Count, Q
+    
+    invoices = Invoice.objects.all()
+    payments = Payment.objects.all()
+    clients = Client.objects.all()
+    anomalies = AnomalyDetection.objects.all()
+    alerts = IntelligentAlert.objects.all()
+    
+    kpi_data = {
+        'total_revenue': invoices.aggregate(Sum('total'))['total__sum'] or 0,
+        'total_invoices': invoices.count(),
+        'paid_invoices': invoices.filter(payment_status='paid').count(),
+        'pending_invoices': invoices.filter(payment_status='pending').count(),
+        'total_clients': clients.count(),
+        'active_alerts': alerts.filter(is_acknowledged=False).count(),
+        'total_anomalies': anomalies.count(),
+        'unresolved_anomalies': anomalies.filter(is_resolved=False).count(),
+    }
+    
+    # Données pour graphiques
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    last_30_days = timezone.now() - timedelta(days=30)
+    monthly_invoices = invoices.filter(date__gte=last_30_days).values('date__year', 'date__month').annotate(
+        total=Sum('total'), count=Count('id')
+    ).order_by('date__year', 'date__month')
+    
+    context = {
+        'dashboard': dashboard,
+        'kpi_data': kpi_data,
+        'monthly_invoices': list(monthly_invoices),
+        'total_views': dashboard.total_views,
+    }
+    
+    return render(request, 'invoice_app/advanced_dashboard.html', context)
+
+
+@login_required
+def dashboard_settings(request):
+    """Paramètres du tableau de bord avancé"""
+    try:
+        dashboard = AdvancedDashboard.objects.get(user=request.user)
+    except AdvancedDashboard.DoesNotExist:
+        dashboard = AdvancedDashboard.objects.create(user=request.user)
+    
+    if request.method == 'POST':
+        dashboard.title = request.POST.get('title', dashboard.title)
+        dashboard.default_period = request.POST.get('default_period', dashboard.default_period)
+        dashboard.color_scheme = request.POST.get('color_scheme', dashboard.color_scheme)
+        dashboard.auto_refresh = request.POST.get('auto_refresh') == 'on'
+        dashboard.refresh_interval = int(request.POST.get('refresh_interval', dashboard.refresh_interval))
+        dashboard.enable_notifications = request.POST.get('enable_notifications') == 'on'
+        dashboard.save()
+        
+        messages.success(request, "Paramètres du tableau de bord mis à jour!")
+        return redirect('advanced_dashboard')
+    
+    context = {
+        'dashboard': dashboard,
+        'period_choices': AdvancedDashboard.PERIODS,
+    }
+    return render(request, 'invoice_app/dashboard_settings.html', context)
