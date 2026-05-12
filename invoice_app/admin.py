@@ -1,5 +1,9 @@
 from django.contrib import admin
-from .models import Client, Product, CompanyInfo, Invoice, InvoiceItem, Payment, Quote, QuoteItem, Notification, EmailTemplate, AuditLog
+from .models import (
+    Client, Product, CompanyInfo, Invoice, InvoiceItem, Payment, Quote, QuoteItem, 
+    Notification, EmailTemplate, AuditLog, AnomalyDetection, RevenueForecast, 
+    IntelligentAlert, AccountingSynchronization
+)
 
 @admin.register(Client)
 class ClientAdmin(admin.ModelAdmin):
@@ -140,3 +144,64 @@ class AuditLogAdmin(admin.ModelAdmin):
     
     def has_change_permission(self, request, obj=None):
         return False
+
+
+# ============================================================================
+# TIER 3 - BONUS MASTER: Admin classes pour IA/Intelligence
+# ============================================================================
+
+@admin.register(AnomalyDetection)
+class AnomalyDetectionAdmin(admin.ModelAdmin):
+    list_display = ['invoice', 'anomaly_type', 'severity', 'confidence', 'is_resolved', 'detected_at']
+    list_filter = ['anomaly_type', 'severity', 'is_resolved', 'detected_at']
+    search_fields = ['invoice__invoice_number', 'description']
+    readonly_fields = ['detected_at', 'detected_value', 'expected_value', 'confidence']
+    fieldsets = (
+        ('Anomalie', {'fields': ('invoice', 'anomaly_type', 'severity', 'description')}),
+        ('Détection', {'fields': ('detected_value', 'expected_value', 'confidence')}),
+        ('Résolution', {'fields': ('is_resolved', 'resolved_at', 'resolution_notes')}),
+        ('Historique', {'fields': ('detected_at',), 'classes': ('collapse',)}),
+    )
+
+
+@admin.register(RevenueForecast)
+class RevenueForecastAdmin(admin.ModelAdmin):
+    list_display = ['period', 'forecast_date', 'predicted_revenue', 'accuracy', 'created_at']
+    list_filter = ['period', 'forecast_date', 'created_at']
+    readonly_fields = ['created_at', 'updated_at', 'predicted_revenue', 'confidence_interval_low', 'confidence_interval_high']
+    fieldsets = (
+        ('Prévisions', {'fields': ('period', 'forecast_date', 'predicted_revenue', 'predicted_invoices')}),
+        ('Intervalle confiance', {'fields': ('confidence_interval_low', 'confidence_interval_high')}),
+        ('Résultats réels', {'fields': ('actual_revenue', 'actual_invoices', 'accuracy')}),
+        ('Historique', {'fields': ('created_at', 'updated_at'), 'classes': ('collapse',)}),
+    )
+
+
+@admin.register(IntelligentAlert)
+class IntelligentAlertAdmin(admin.ModelAdmin):
+    list_display = ['alert_type', 'priority', 'title', 'is_acknowledged', 'created_at']
+    list_filter = ['alert_type', 'priority', 'is_acknowledged', 'created_at']
+    search_fields = ['title', 'description', 'related_invoice__invoice_number', 'related_client__name']
+    readonly_fields = ['created_at', 'acknowledged_by', 'acknowledged_at']
+    fieldsets = (
+        ('Alerte', {'fields': ('alert_type', 'priority', 'title', 'description')}),
+        ('Références', {'fields': ('related_invoice', 'related_client')}),
+        ('Recommandation IA', {'fields': ('recommendation',)}),
+        ('Statut', {'fields': ('is_acknowledged', 'acknowledged_by', 'acknowledged_at')}),
+        ('Historique', {'fields': ('created_at',), 'classes': ('collapse',)}),
+    )
+
+
+@admin.register(AccountingSynchronization)
+class AccountingSynchronizationAdmin(admin.ModelAdmin):
+    list_display = ['export_type', 'status', 'start_date', 'end_date', 'records_count', 'created_at']
+    list_filter = ['export_type', 'status', 'created_at']
+    search_fields = ['created_by', 'file_path']
+    readonly_fields = ['created_at', 'completed_at', 'file_size', 'checksum']
+    fieldsets = (
+        ('Export', {'fields': ('export_type', 'status', 'records_count')}),
+        ('Dates', {'fields': ('start_date', 'end_date')}),
+        ('Fichier', {'fields': ('file_path', 'file_size', 'checksum')}),
+        ('Erreurs', {'fields': ('error_message',)}),
+        ('Historique', {'fields': ('created_by', 'created_at', 'completed_at'), 'classes': ('collapse',)}),
+    )

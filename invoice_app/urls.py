@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import tier3_views
 
 urlpatterns = [
     # Dashboard
@@ -63,4 +64,27 @@ urlpatterns = [
     # API
     path('api/product/<int:product_id>/price/', views.api_get_product_price, name='api-product-price'),
     path('api/invoice/summary/', views.api_invoice_summary, name='api-invoice-summary'),
+    
+    # ============================================================================
+    # TIER 3 - BONUS MASTER: IA/Intelligence & Synchronisation Comptable
+    # ============================================================================
+    
+    # Anomaly Detection
+    path('anomalies/', tier3_views.anomaly_list, name='anomaly-list'),
+    path('anomalies/<int:pk>/', tier3_views.anomaly_detail, name='anomaly-detail'),
+    
+    # Revenue Forecast
+    path('forecast/', tier3_views.forecast_dashboard, name='forecast-dashboard'),
+    path('forecast/create/', tier3_views.forecast_create, name='forecast-create'),
+    
+    # Intelligent Alerts
+    path('alerts/', tier3_views.alert_list, name='alert-list'),
+    path('alerts/<int:pk>/acknowledge/', tier3_views.alert_acknowledge, name='alert-acknowledge'),
+    
+    # Accounting Synchronization
+    path('accounting/export/', tier3_views.accounting_export_form, name='accounting-export'),
+    path('accounting/history/', tier3_views.synchronization_history, name='sync-history'),
+    
+    # IA Dashboard
+    path('ia-dashboard/', tier3_views.ia_dashboard, name='ia-dashboard'),
 ]

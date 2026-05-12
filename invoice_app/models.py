@@ -383,3 +383,172 @@ class AuditLog(models.Model):
     
     def __str__(self):
         return f"{self.get_action_display()} - {self.get_model_display()} (#{self.object_id}) by {self.user or 'Anonymous'}"
+
+
+# ============================================================================
+# TIER 3 - BONUS MASTER 🔥: IA/Intelligence & Synchronisation Comptable
+# ============================================================================
+
+class AnomalyDetection(models.Model):
+    """IA: Détection automatique des anomalies"""
+    ANOMALY_TYPES = [
+        ('unusual_amount', 'Montant anormal'),
+        ('payment_delay', 'Retard de paiement'),
+        ('duplicate_invoice', 'Facture en doublon'),
+        ('unusual_client', 'Client inhabituel'),
+        ('pricing_error', 'Erreur de tarification'),
+        ('unusual_frequency', 'Fréquence anormale'),
+    ]
+    
+    SEVERITY_CHOICES = [
+        ('low', 'Basse'),
+        ('medium', 'Moyenne'),
+        ('high', 'Haute'),
+        ('critical', 'Critique'),
+    ]
+    
+    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, verbose_name="Facture")
+    anomaly_type = models.CharField(max_length=50, choices=ANOMALY_TYPES, verbose_name="Type d'anomalie")
+    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, verbose_name="Sévérité")
+    description = models.TextField(verbose_name="Description de l'anomalie")
+    detected_value = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valeur détectée")
+    expected_value = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valeur attendue")
+    confidence = models.DecimalField(max_digits=3, decimal_places=2, validators=[MinValueValidator(0), MinValueValidator(100)], verbose_name="Confiance %")
+    is_resolved = models.BooleanField(default=False, verbose_name="Résolu")
+    resolved_at = models.DateTimeField(blank=True, null=True, verbose_name="Date de résolution")
+    resolution_notes = models.TextField(blank=True, null=True, verbose_name="Notes de résolution")
+    detected_at = models.DateTimeField(auto_now_add=True, verbose_name="Détecté le")
+    
+    class Meta:
+        verbose_name = "Détection d'anomalie"
+        verbose_name_plural = "Détections d'anomalies"
+        ordering = ['-detected_at']
+        indexes = [
+            models.Index(fields=['invoice', 'severity']),
+            models.Index(fields=['is_resolved', '-detected_at']),
+            models.Index(fields=['anomaly_type']),
+        ]
+    
+    def __str__(self):
+        return f"{self.get_anomaly_type_display()} - {self.invoice.number} ({self.get_severity_display()})"
+
+
+class RevenueForecast(models.Model):
+    """IA: Prévisions de chiffre d'affaires"""
+    FORECAST_PERIOD = [
+        ('weekly', 'Hebdomadaire'),
+        ('monthly', 'Mensuelle'),
+        ('quarterly', 'Trimestrielle'),
+        ('yearly', 'Annuelle'),
+    ]
+    
+    period = models.CharField(max_length=20, choices=FORECAST_PERIOD, verbose_name="Période")
+    forecast_date = models.DateField(verbose_name="Date de la prévision")
+    predicted_revenue = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="CA prédit")
+    predicted_invoices = models.IntegerField(verbose_name="Factures prévues")
+    confidence_interval_low = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Intervalle bas")
+    confidence_interval_high = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Intervalle haut")
+    actual_revenue = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, verbose_name="CA réel")
+    actual_invoices = models.IntegerField(blank=True, null=True, verbose_name="Factures réelles")
+    accuracy = models.DecimalField(max_digits=3, decimal_places=2, blank=True, null=True, validators=[MinValueValidator(0), MinValueValidator(100)], verbose_name="Précision %")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Prévision de CA"
+        verbose_name_plural = "Prévisions de CA"
+        ordering = ['-forecast_date']
+        unique_together = ('period', 'forecast_date')
+        indexes = [
+            models.Index(fields=['period', 'forecast_date']),
+        ]
+    
+    def __str__(self):
+        return f"{self.get_period_display()} - {self.forecast_date}: {self.predicted_revenue}€"
+
+
+class IntelligentAlert(models.Model):
+    """IA: Alertes intelligentes basées sur IA"""
+    ALERT_TYPES = [
+        ('anomaly', 'Anomalie détectée'),
+        ('forecast_warning', 'Avertissement prévisions'),
+        ('payment_risk', 'Risque de paiement'),
+        ('revenue_decline', 'Baisse de revenus'),
+        ('unusual_pattern', 'Motif inhabituél'),
+        ('duplicate_detection', 'Doublon détecté'),
+    ]
+    
+    PRIORITY_CHOICES = [
+        ('low', 'Basse'),
+        ('medium', 'Moyenne'),
+        ('high', 'Haute'),
+        ('urgent', 'Urgent'),
+    ]
+    
+    alert_type = models.CharField(max_length=50, choices=ALERT_TYPES, verbose_name="Type d'alerte")
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, verbose_name="Priorité")
+    title = models.CharField(max_length=255, verbose_name="Titre")
+    description = models.TextField(verbose_name="Description")
+    related_invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, blank=True, null=True, verbose_name="Facture associée")
+    related_client = models.ForeignKey(Client, on_delete=models.CASCADE, blank=True, null=True, verbose_name="Client associé")
+    recommendation = models.TextField(blank=True, null=True, verbose_name="Recommandation IA")
+    is_acknowledged = models.BooleanField(default=False, verbose_name="Confirmé")
+    acknowledged_by = models.CharField(max_length=255, blank=True, null=True, verbose_name="Confirmé par")
+    acknowledged_at = models.DateTimeField(blank=True, null=True, verbose_name="Confirmé le")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
+    
+    class Meta:
+        verbose_name = "Alerte intelligente"
+        verbose_name_plural = "Alertes intelligentes"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['priority', 'is_acknowledged']),
+            models.Index(fields=['alert_type', '-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.get_alert_type_display()} - {self.get_priority_display()}: {self.title}"
+
+
+class AccountingSynchronization(models.Model):
+    """Synchronisation comptable: Export CSV et intégration"""
+    EXPORT_TYPES = [
+        ('invoices', 'Factures'),
+        ('payments', 'Paiements'),
+        ('clients', 'Clients'),
+        ('products', 'Produits'),
+        ('journal', 'Journal comptable'),
+        ('trial_balance', 'Balance trial'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('pending', 'En attente'),
+        ('processing', 'En cours'),
+        ('completed', 'Complété'),
+        ('failed', 'Échoué'),
+    ]
+    
+    export_type = models.CharField(max_length=50, choices=EXPORT_TYPES, verbose_name="Type d'export")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="Statut")
+    start_date = models.DateField(verbose_name="Date de début")
+    end_date = models.DateField(verbose_name="Date de fin")
+    records_count = models.IntegerField(default=0, verbose_name="Nombre d'enregistrements")
+    file_path = models.CharField(max_length=500, blank=True, null=True, verbose_name="Chemin fichier")
+    file_size = models.BigIntegerField(blank=True, null=True, verbose_name="Taille fichier (bytes)")
+    checksum = models.CharField(max_length=64, blank=True, null=True, verbose_name="Checksum SHA256")
+    error_message = models.TextField(blank=True, null=True, verbose_name="Message d'erreur")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
+    completed_at = models.DateTimeField(blank=True, null=True, verbose_name="Complété le")
+    created_by = models.CharField(max_length=255, blank=True, null=True, verbose_name="Créé par")
+    
+    class Meta:
+        verbose_name = "Synchronisation comptable"
+        verbose_name_plural = "Synchronisations comptables"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['export_type', 'status']),
+            models.Index(fields=['-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.get_export_type_display()} ({self.get_status_display()}) - {self.start_date} à {self.end_date}"

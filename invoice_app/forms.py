@@ -1,5 +1,9 @@
 from django import forms
-from .models import Client, Product, Invoice, InvoiceItem, Payment, CompanyInfo, Quote, QuoteItem, Notification, EmailTemplate
+from .models import (
+    Client, Product, Invoice, InvoiceItem, Payment, CompanyInfo, Quote, QuoteItem, 
+    Notification, EmailTemplate, AnomalyDetection, RevenueForecast, IntelligentAlert,
+    AccountingSynchronization
+)
 from django.conf import settings
 
 class ClientForm(forms.ModelForm):
@@ -197,6 +201,118 @@ class SendEmailForm(forms.Form):
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         label="Joindre le PDF"
     )
+
+
+# ============================================================================
+# TIER 3 - BONUS MASTER: Forms pour IA/Intelligence & Synchronisation
+# ============================================================================
+
+class AnomalyFilterForm(forms.Form):
+    """Filtrer les anomalies détectées"""
+    anomaly_type = forms.ChoiceField(
+        choices=[('', '-- Tous les types --')] + AnomalyDetection.ANOMALY_TYPES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label="Type d'anomalie"
+    )
+    severity = forms.ChoiceField(
+        choices=[('', '-- Toutes sévérités --')] + AnomalyDetection.SEVERITY_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label="Sévérité"
+    )
+    is_resolved = forms.NullBooleanField(
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}, choices=[(None, '-- Tous --'), (True, 'Résolu'), (False, 'Non résolu')]),
+        label="Statut"
+    )
+    date_from = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        label="Du"
+    )
+    date_to = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        label="Au"
+    )
+
+
+class IntelligentAlertFilterForm(forms.Form):
+    """Filtrer les alertes intelligentes"""
+    alert_type = forms.ChoiceField(
+        choices=[('', '-- Tous les types --')] + IntelligentAlert.ALERT_TYPES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label="Type d'alerte"
+    )
+    priority = forms.ChoiceField(
+        choices=[('', '-- Toutes priorités --')] + IntelligentAlert.PRIORITY_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label="Priorité"
+    )
+    is_acknowledged = forms.NullBooleanField(
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}, choices=[(None, '-- Tous --'), (True, 'Confirmé'), (False, 'Non confirmé')]),
+        label="Statut"
+    )
+
+
+class RevenueForecastForm(forms.ModelForm):
+    """Créer/modifier une prévision de CA"""
+    class Meta:
+        model = RevenueForecast
+        fields = ['period', 'forecast_date', 'predicted_revenue', 'predicted_invoices']
+        widgets = {
+            'period': forms.Select(attrs={'class': 'form-control'}),
+            'forecast_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'predicted_revenue': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'CA prédit (€)'}),
+            'predicted_invoices': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Nombre de factures'}),
+        }
+
+
+class AccountingSynchronizationForm(forms.Form):
+    """Formulaire pour exporter données comptables"""
+    export_type = forms.ChoiceField(
+        choices=AccountingSynchronization.EXPORT_TYPES,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label="Type d'export"
+    )
+    start_date = forms.DateField(
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        label="Date de début"
+    )
+    end_date = forms.DateField(
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        label="Date de fin"
+    )
+    format = forms.ChoiceField(
+        choices=[('csv', 'CSV'), ('xlsx', 'Excel'), ('json', 'JSON')],
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label="Format d'export"
+    )
+
+
+class AnomalyResolutionForm(forms.ModelForm):
+    """Formulaire pour résoudre une anomalie"""
+    class Meta:
+        model = AnomalyDetection
+        fields = ['is_resolved', 'resolution_notes']
+        widgets = {
+            'is_resolved': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'resolution_notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Notes de résolution'}),
+        }
+
+
+class IntelligentAlertAcknowledgeForm(forms.ModelForm):
+    """Formulaire pour confirmer une alerte"""
+    class Meta:
+        model = IntelligentAlert
+        fields = ['is_acknowledged']
+        widgets = {
+            'is_acknowledged': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
 
 
 class NotificationFilterForm(forms.Form):
