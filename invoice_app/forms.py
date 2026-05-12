@@ -228,3 +228,76 @@ class NotificationFilterForm(forms.Form):
         widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
         label="Au"
     )
+
+
+# ============== TIER 2 Forms ==============
+
+class ArchiveForm(forms.Form):
+    reason = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Raison de l''archivage'}),
+        label='Raison'
+    )
+
+
+class UnarchiveForm(forms.Form):
+    reason = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Raison de la restauration'}),
+        label='Raison'
+    )
+
+
+class AdvancedSearchForm(forms.Form):
+    SEARCH_TYPES = [
+        ('all', 'Tous les types'),
+        ('invoice', 'Factures'),
+        ('client', 'Clients'),
+        ('quote', 'Devis'),
+    ]
+    
+    search_text = forms.CharField(
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Rechercher...'}),
+        label='Texte',
+        required=False
+    )
+    search_type = forms.ChoiceField(
+        choices=SEARCH_TYPES,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Type',
+        required=False
+    )
+    date_from = forms.DateField(
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        label='Date debut',
+        required=False
+    )
+    date_to = forms.DateField(
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        label='Date fin',
+        required=False
+    )
+
+
+class ExchangeRateForm(forms.Form):
+    CURRENCY_CHOICES = [
+        ('EUR', 'Euro (EUR)'),
+        ('USD', 'Dollar US (USD)'),
+        ('GBP', 'Livre Sterling (GBP)'),
+    ]
+    
+    from_currency = forms.ChoiceField(
+        choices=CURRENCY_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='De (Devise source)'
+    )
+    to_currency = forms.ChoiceField(
+        choices=CURRENCY_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Vers (Devise cible)'
+    )
+    rate = forms.DecimalField(
+        max_digits=8,
+        decimal_places=4,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Taux de change', 'step': '0.0001'}),
+        label='Taux de change'
+    )
+

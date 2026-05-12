@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Client, Product, CompanyInfo, Invoice, InvoiceItem, Payment, Quote, QuoteItem, Notification, EmailTemplate, AuditLog
+from .models import Client, Product, CompanyInfo, Invoice, InvoiceItem, Payment, Quote, QuoteItem, Notification, EmailTemplate, AuditLog, ExchangeRate, SearchIndex, ArchiveLog
 
 @admin.register(Client)
 class ClientAdmin(admin.ModelAdmin):
@@ -48,20 +48,27 @@ class InvoiceAdmin(admin.ModelAdmin):
     inlines = [InvoiceItemInline]
     fieldsets = (
         ('Informations de base', {'fields': ('invoice_number', 'client', 'date', 'due_date', 'payment_method')}),
+        ('Devise (Tier 2)', {'fields': ('currency', 'exchange_rate', 'original_currency')}),
         ('Détails', {'fields': ('subtotal', ('remise_percentage', 'remise_amount'), 
                                  ('rabais_percentage', 'rabais_amount'),
                                  ('escompte_percentage', 'escompte_amount'),
                                  'total_discount', 'tva_amount', 'total')}),
         ('Paiement', {'fields': ('payment_status', 'amount_paid', 'is_credit_note', 'credit_note_reason', 'original_invoice')}),
+        ('Archivage (Tier 2)', {'fields': ('is_archived', 'archived_at', 'archived_by'), 'classes': ('collapse',)}),
         ('Timestamps', {'fields': ('created_at', 'updated_at'), 'classes': ('collapse',)}),
     )
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ['invoice', 'amount', 'payment_date', 'payment_method']
-    list_filter = ['payment_date', 'payment_method', 'invoice__client']
+    list_display = ['invoice', 'amount', 'payment_date', 'payment_method', 'currency']
+    list_filter = ['payment_date', 'payment_method', 'invoice__client', 'currency']
     search_fields = ['invoice__invoice_number', 'reference']
     readonly_fields = ['created_at']
+    fieldsets = (
+        ('Informations', {'fields': ('invoice', 'amount', 'payment_date', 'payment_method', 'reference')}),
+        ('Devise (Tier 2)', {'fields': ('currency',)}),
+        ('Timestamps', {'fields': ('created_at',), 'classes': ('collapse',)}),
+    )
 
 
 class QuoteItemInline(admin.TabularInline):
@@ -85,6 +92,7 @@ class QuoteAdmin(admin.ModelAdmin):
     inlines = [QuoteItemInline]
     fieldsets = (
         ('Informations de base', {'fields': ('quote_number', 'client', 'date', 'validity_date', 'status')}),
+        ('Devise (Tier 2)', {'fields': ('currency', 'exchange_rate', 'original_currency')}),
         ('Détails', {'fields': ('subtotal', ('remise_percentage', 'remise_amount'), 
                                  ('rabais_percentage', 'rabais_amount'),
                                  ('escompte_percentage', 'escompte_amount'),
@@ -140,3 +148,44 @@ class AuditLogAdmin(admin.ModelAdmin):
     
     def has_change_permission(self, request, obj=None):
         return False
+
+
+# ============== TIER 2 Admin Interfaces ==============
+
+@admin.register(ExchangeRate)
+class ExchangeRateAdmin(admin.ModelAdmin):
+    list_display = ['from_currency', 'to_currency', 'rate', 'date', 'updated_at']
+    list_filter = ['from_currency', 'to_currency', 'date']
+    search_fields = ['from_currency', 'to_currency']
+    ordering = ['-date']
+    fieldsets = (
+        ('Devises', {'fields': ('from_currency', 'to_currency')}),
+        ('Taux', {'fields': ('rate', 'date')}),
+    )
+
+
+@admin.register(SearchIndex)
+class SearchIndexAdmin(admin.ModelAdmin):
+    list_display = ['content_type', 'document_number', 'client_name', 'date', 'updated_at']
+    list_filter = ['content_type', 'date']
+    search_fields = ['search_text', 'keywords', 'document_number', 'client_name']
+    readonly_fields = ['created_at', 'updated_at']
+    fieldsets = (
+        ('Contenu', {'fields': ('content_type', 'object_id')}),
+        ('Recherche', {'fields': ('search_text', 'keywords')}),
+        ('References', {'fields': ('document_number', 'client_name', 'amount', 'date')}),
+        ('Timestamps', {'fields': ('created_at', 'updated_at')}),
+    )
+
+
+@admin.register(ArchiveLog)
+class ArchiveLogAdmin(admin.ModelAdmin):
+    list_display = ['invoice', 'archived_by', 'archived_at', 'unarchived_at']
+    list_filter = ['archived_at', 'unarchived_at']
+    search_fields = ['invoice__invoice_number', 'archived_by', 'unarchived_by']
+    readonly_fields = ['archived_at', 'unarchived_at']
+    fieldsets = (
+        ('Archivage', {'fields': ('invoice', 'archived_by', 'archived_at', 'reason')}),
+        ('Restauration', {'fields': ('unarchived_by', 'unarchived_at', 'unarchive_reason')}),
+    )
+

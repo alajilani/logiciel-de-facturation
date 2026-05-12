@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import tier2_views
 
 urlpatterns = [
     # Dashboard
@@ -63,4 +64,20 @@ urlpatterns = [
     # API
     path('api/product/<int:product_id>/price/', views.api_get_product_price, name='api-product-price'),
     path('api/invoice/summary/', views.api_invoice_summary, name='api-invoice-summary'),
+    
+    # ============== TIER 2: Multi-Currency, Search, Archive ==============
+    
+    # Multi-Currency
+    path('exchange-rates/', tier2_views.exchange_rates_list, name='exchange-rates-list'),
+    path('invoices/<int:invoice_id>/convert-currency/', tier2_views.invoice_convert_currency, name='invoice-convert-currency'),
+    
+    # Advanced Search
+    path('search/', tier2_views.advanced_search, name='advanced-search'),
+    
+    # Invoice Archiving
+    path('invoices/<int:invoice_id>/archive/', tier2_views.invoice_archive, name='invoice-archive'),
+    path('invoices/<int:invoice_id>/unarchive/', tier2_views.invoice_unarchive, name='invoice-unarchive'),
+    path('archived-invoices/', tier2_views.archived_invoices_list, name='archived-invoices-list'),
+    path('invoices/<int:invoice_id>/archive-logs/', tier2_views.archive_logs_detail, name='archive-logs-detail'),
 ]
+

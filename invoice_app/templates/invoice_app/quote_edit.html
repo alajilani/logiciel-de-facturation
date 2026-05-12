@@ -1,243 +1,298 @@
-{% extends 'base.html' %}
-
-{% block title %}Modifier le devis {{ quote.quote_number }}{% endblock %}
-
-{% block content %}
+{% extends 'base.html' %} {% block title %}Modifier le devis {{
+quote.quote_number }}{% endblock %} {% block content %}
 <div class="container mt-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>✏️ Modifier le devis {{ quote.quote_number }}</h1>
-        <a href="{% url 'quote-detail' quote.id %}" class="btn btn-secondary">← Retour</a>
-    </div>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>✏️ Modifier le devis {{ quote.quote_number }}</h1>
+    <a href="{% url 'quote-detail' quote.id %}" class="btn btn-secondary"
+      >← Retour</a
+    >
+  </div>
 
-    {% if messages %}
-        {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        {% endfor %}
-    {% endif %}
+  {% if messages %} {% for message in messages %}
+  <div
+    class="alert alert-{{ message.tags }} alert-dismissible fade show"
+    role="alert"
+  >
+    {{ message }}
+    <button
+      type="button"
+      class="btn-close"
+      data-bs-dismiss="alert"
+      aria-label="Close"
+    ></button>
+  </div>
+  {% endfor %} {% endif %}
 
-    <div class="row">
-        <!-- Formulaire du devis -->
-        <div class="col-md-6">
-            <div class="card mb-4">
-                <div class="card-header bg-light">
-                    <h5>Informations du devis</h5>
-                </div>
-                <div class="card-body">
-                    <form method="post">
-                        {% csrf_token %}
-                        <input type="hidden" name="save_quote" value="1">
-                        
-                        <div class="mb-3">
-                            <label for="{{ form.client.id_for_label }}" class="form-label">{{ form.client.label }}:</label>
-                            {{ form.client }}
-                            {% if form.client.errors %}
-                            <div class="text-danger">{{ form.client.errors }}</div>
-                            {% endif %}
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.date.id_for_label }}" class="form-label">{{ form.date.label }}:</label>
-                            {{ form.date }}
-                            {% if form.date.errors %}
-                            <div class="text-danger">{{ form.date.errors }}</div>
-                            {% endif %}
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.validity_date.id_for_label }}" class="form-label">{{ form.validity_date.label }}:</label>
-                            {{ form.validity_date }}
-                            {% if form.validity_date.errors %}
-                            <div class="text-danger">{{ form.validity_date.errors }}</div>
-                            {% endif %}
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.terms_conditions.id_for_label }}" class="form-label">{{ form.terms_conditions.label }}:</label>
-                            {{ form.terms_conditions }}
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}:</label>
-                            {{ form.notes }}
-                        </div>
-
-                        <button type="submit" class="btn btn-primary w-100">💾 Sauvegarder</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Résumé financier -->
-        <div class="col-md-6">
-            <div class="card mb-4">
-                <div class="card-header bg-light">
-                    <h5>Résumé financier</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row mb-2">
-                        <div class="col-6"><strong>Sous-total:</strong></div>
-                        <div class="col-6 text-end">{{ quote.subtotal|floatformat:2 }}€</div>
-                    </div>
-                    {% if quote.remise_amount > 0 %}
-                    <div class="row mb-2">
-                        <div class="col-6"><strong>Remise:</strong></div>
-                        <div class="col-6 text-end">-{{ quote.remise_amount|floatformat:2 }}€</div>
-                    </div>
-                    {% endif %}
-                    {% if quote.rabais_amount > 0 %}
-                    <div class="row mb-2">
-                        <div class="col-6"><strong>Rabais:</strong></div>
-                        <div class="col-6 text-end">-{{ quote.rabais_amount|floatformat:2 }}€</div>
-                    </div>
-                    {% endif %}
-                    {% if quote.escompte_amount > 0 %}
-                    <div class="row mb-2">
-                        <div class="col-6"><strong>Escompte:</strong></div>
-                        <div class="col-6 text-end">-{{ quote.escompte_amount|floatformat:2 }}€</div>
-                    </div>
-                    {% endif %}
-                    <hr>
-                    <div class="row mb-2">
-                        <div class="col-6"><strong>TVA:</strong></div>
-                        <div class="col-6 text-end">{{ quote.tva_amount|floatformat:2 }}€</div>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-6"><h5 class="mb-0">TOTAL TTC:</h5></div>
-                        <div class="col-6 text-end"><h5 class="mb-0"><strong>{{ quote.total|floatformat:2 }}€</strong></h5></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Gestion des articles -->
-    <div class="card mb-4">
+  <div class="row">
+    <!-- Formulaire du devis -->
+    <div class="col-md-6">
+      <div class="card mb-4">
         <div class="card-header bg-light">
-            <h5>Articles du devis</h5>
+          <h5>Informations du devis</h5>
         </div>
         <div class="card-body">
-            {% if items %}
-            <div class="table-responsive mb-4">
-                <table class="table table-striped">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Description</th>
-                            <th>Quantité</th>
-                            <th>Prix Unitaire</th>
-                            <th>Total</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in items %}
-                        <tr>
-                            <td>{{ item.description }}</td>
-                            <td>{{ item.quantity }}</td>
-                            <td>{{ item.price|floatformat:2 }}€</td>
-                            <td><strong>{{ item.total|floatformat:2 }}€</strong></td>
-                            <td>
-                                <a href="{% url 'quote-delete-item' quote.id item.id %}" class="btn btn-sm btn-danger">🗑️</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <p class="text-muted">Aucun article pour le moment.</p>
-            {% endif %}
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="save_quote" value="1" />
 
-            <!-- Ajouter un article -->
-            <form method="post" class="row g-2">
-                {% csrf_token %}
-                <input type="hidden" name="add_item" value="1">
-                
-                <div class="col-md-4">
-                    {{ item_form.description }}
-                </div>
-                <div class="col-md-2">
-                    {{ item_form.quantity }}
-                </div>
-                <div class="col-md-2">
-                    {{ item_form.price }}
-                </div>
-                <div class="col-md-2">
-                    {{ item_form.product }}
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-success w-100">➕ Ajouter</button>
-                </div>
-            </form>
+            <div class="mb-3">
+              <label for="{{ form.client.id_for_label }}" class="form-label"
+                >{{ form.client.label }}:</label
+              >
+              {{ form.client }} {% if form.client.errors %}
+              <div class="text-danger">{{ form.client.errors }}</div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label for="{{ form.date.id_for_label }}" class="form-label"
+                >{{ form.date.label }}:</label
+              >
+              {{ form.date }} {% if form.date.errors %}
+              <div class="text-danger">{{ form.date.errors }}</div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label
+                for="{{ form.validity_date.id_for_label }}"
+                class="form-label"
+                >{{ form.validity_date.label }}:</label
+              >
+              {{ form.validity_date }} {% if form.validity_date.errors %}
+              <div class="text-danger">{{ form.validity_date.errors }}</div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label
+                for="{{ form.terms_conditions.id_for_label }}"
+                class="form-label"
+                >{{ form.terms_conditions.label }}:</label
+              >
+              {{ form.terms_conditions }}
+            </div>
+
+            <div class="mb-3">
+              <label for="{{ form.notes.id_for_label }}" class="form-label"
+                >{{ form.notes.label }}:</label
+              >
+              {{ form.notes }}
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">
+              💾 Sauvegarder
+            </button>
+          </form>
         </div>
+      </div>
     </div>
 
-    <!-- Gestion des remises -->
-    <div class="card mb-4">
+    <!-- Résumé financier -->
+    <div class="col-md-6">
+      <div class="card mb-4">
         <div class="card-header bg-light">
-            <h5>Remises et réductions</h5>
+          <h5>Résumé financier</h5>
         </div>
         <div class="card-body">
-            <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="update_discount" value="1">
-                
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="{{ discount_form.remise_percentage.id_for_label }}" class="form-label">{{ discount_form.remise_percentage.label }} (Remise %):</label>
-                        <div class="input-group">
-                            {{ discount_form.remise_percentage }}
-                            <span class="input-group-text">%</span>
-                        </div>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="{{ discount_form.remise_amount.id_for_label }}" class="form-label">{{ discount_form.remise_amount.label }} (€):</label>
-                        <div class="input-group">
-                            {{ discount_form.remise_amount }}
-                            <span class="input-group-text">€</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="{{ discount_form.rabais_percentage.id_for_label }}" class="form-label">{{ discount_form.rabais_percentage.label }} (Rabais %):</label>
-                        <div class="input-group">
-                            {{ discount_form.rabais_percentage }}
-                            <span class="input-group-text">%</span>
-                        </div>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="{{ discount_form.rabais_amount.id_for_label }}" class="form-label">{{ discount_form.rabais_amount.label }} (€):</label>
-                        <div class="input-group">
-                            {{ discount_form.rabais_amount }}
-                            <span class="input-group-text">€</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="{{ discount_form.escompte_percentage.id_for_label }}" class="form-label">{{ discount_form.escompte_percentage.label }} (Escompte %):</label>
-                        <div class="input-group">
-                            {{ discount_form.escompte_percentage }}
-                            <span class="input-group-text">%</span>
-                        </div>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="{{ discount_form.escompte_amount.id_for_label }}" class="form-label">{{ discount_form.escompte_amount.label }} (€):</label>
-                        <div class="input-group">
-                            {{ discount_form.escompte_amount }}
-                            <span class="input-group-text">€</span>
-                        </div>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn btn-primary">💾 Appliquer les réductions</button>
-            </form>
+          <div class="row mb-2">
+            <div class="col-6"><strong>Sous-total:</strong></div>
+            <div class="col-6 text-end">
+              {{ quote.subtotal|floatformat:2 }}€
+            </div>
+          </div>
+          {% if quote.remise_amount > 0 %}
+          <div class="row mb-2">
+            <div class="col-6"><strong>Remise:</strong></div>
+            <div class="col-6 text-end">
+              -{{ quote.remise_amount|floatformat:2 }}€
+            </div>
+          </div>
+          {% endif %} {% if quote.rabais_amount > 0 %}
+          <div class="row mb-2">
+            <div class="col-6"><strong>Rabais:</strong></div>
+            <div class="col-6 text-end">
+              -{{ quote.rabais_amount|floatformat:2 }}€
+            </div>
+          </div>
+          {% endif %} {% if quote.escompte_amount > 0 %}
+          <div class="row mb-2">
+            <div class="col-6"><strong>Escompte:</strong></div>
+            <div class="col-6 text-end">
+              -{{ quote.escompte_amount|floatformat:2 }}€
+            </div>
+          </div>
+          {% endif %}
+          <hr />
+          <div class="row mb-2">
+            <div class="col-6"><strong>TVA:</strong></div>
+            <div class="col-6 text-end">
+              {{ quote.tva_amount|floatformat:2 }}€
+            </div>
+          </div>
+          <div class="row mb-2">
+            <div class="col-6"><h5 class="mb-0">TOTAL TTC:</h5></div>
+            <div class="col-6 text-end">
+              <h5 class="mb-0">
+                <strong>{{ quote.total|floatformat:2 }}€</strong>
+              </h5>
+            </div>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
+
+  <!-- Gestion des articles -->
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h5>Articles du devis</h5>
+    </div>
+    <div class="card-body">
+      {% if items %}
+      <div class="table-responsive mb-4">
+        <table class="table table-striped">
+          <thead class="table-light">
+            <tr>
+              <th>Description</th>
+              <th>Quantité</th>
+              <th>Prix Unitaire</th>
+              <th>Total</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+            <tr>
+              <td>{{ item.description }}</td>
+              <td>{{ item.quantity }}</td>
+              <td>{{ item.price|floatformat:2 }}€</td>
+              <td><strong>{{ item.total|floatformat:2 }}€</strong></td>
+              <td>
+                <a
+                  href="{% url 'quote-delete-item' quote.id item.id %}"
+                  class="btn btn-sm btn-danger"
+                  >🗑️</a
+                >
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted">Aucun article pour le moment.</p>
+      {% endif %}
+
+      <!-- Ajouter un article -->
+      <form method="post" class="row g-2">
+        {% csrf_token %}
+        <input type="hidden" name="add_item" value="1" />
+
+        <div class="col-md-4">{{ item_form.description }}</div>
+        <div class="col-md-2">{{ item_form.quantity }}</div>
+        <div class="col-md-2">{{ item_form.price }}</div>
+        <div class="col-md-2">{{ item_form.product }}</div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-success w-100">
+            ➕ Ajouter
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Gestion des remises -->
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h5>Remises et réductions</h5>
+    </div>
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="update_discount" value="1" />
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label
+              for="{{ discount_form.remise_percentage.id_for_label }}"
+              class="form-label"
+              >{{ discount_form.remise_percentage.label }} (Remise %):</label
+            >
+            <div class="input-group">
+              {{ discount_form.remise_percentage }}
+              <span class="input-group-text">%</span>
+            </div>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label
+              for="{{ discount_form.remise_amount.id_for_label }}"
+              class="form-label"
+              >{{ discount_form.remise_amount.label }} (€):</label
+            >
+            <div class="input-group">
+              {{ discount_form.remise_amount }}
+              <span class="input-group-text">€</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label
+              for="{{ discount_form.rabais_percentage.id_for_label }}"
+              class="form-label"
+              >{{ discount_form.rabais_percentage.label }} (Rabais %):</label
+            >
+            <div class="input-group">
+              {{ discount_form.rabais_percentage }}
+              <span class="input-group-text">%</span>
+            </div>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label
+              for="{{ discount_form.rabais_amount.id_for_label }}"
+              class="form-label"
+              >{{ discount_form.rabais_amount.label }} (€):</label
+            >
+            <div class="input-group">
+              {{ discount_form.rabais_amount }}
+              <span class="input-group-text">€</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label
+              for="{{ discount_form.escompte_percentage.id_for_label }}"
+              class="form-label"
+              >{{ discount_form.escompte_percentage.label }} (Escompte
+              %):</label
+            >
+            <div class="input-group">
+              {{ discount_form.escompte_percentage }}
+              <span class="input-group-text">%</span>
+            </div>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label
+              for="{{ discount_form.escompte_amount.id_for_label }}"
+              class="form-label"
+              >{{ discount_form.escompte_amount.label }} (€):</label
+            >
+            <div class="input-group">
+              {{ discount_form.escompte_amount }}
+              <span class="input-group-text">€</span>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+          💾 Appliquer les réductions
+        </button>
+      </form>
+    </div>
+  </div>
 </div>
 {% endblock %}
