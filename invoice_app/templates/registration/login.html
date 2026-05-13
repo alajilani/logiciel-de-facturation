@@ -1,0 +1,124 @@
+{% extends "base.html" %} {% load static %} {% block title %}Connexion - {%
+endblock %} {% block content %}
+<div class="container-fluid">
+  <div
+    class="row justify-content-center align-items-center"
+    style="min-height: 80vh"
+  >
+    <div class="col-md-5">
+      <div class="card shadow-lg border-0">
+        <div class="card-body p-5">
+          <!-- Logo & Title -->
+          <div class="text-center mb-4">
+            <img
+              src="{% static 'img/logo.svg' %}"
+              alt=""
+              aria-hidden="true"
+              style="width: 6rem; height: 6rem; object-fit: contain"
+              class="mb-3"
+            />
+            <h1 class="h3 fw-bold">FactureApp</h1>
+            <p class="text-muted">Connectez-vous à votre compte</p>
+          </div>
+
+          <!-- Error Messages -->
+          {% if form.non_field_errors %}
+          <div
+            class="alert alert-danger alert-dismissible fade show"
+            role="alert"
+          >
+            {% for error in form.non_field_errors %}
+            <strong>Erreur:</strong> {{ error }} {% endfor %}
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="alert"
+            ></button>
+          </div>
+          {% endif %}
+
+          <!-- Login Form -->
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="mb-3">
+              <label for="{{ form.username.id_for_label }}" class="form-label">
+                <i class="fas fa-user"></i> Nom d'utilisateur
+              </label>
+              {{ form.username }} {% if form.username.errors %}
+              <div class="invalid-feedback d-block">
+                {{ form.username.errors.0 }}
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label for="{{ form.password.id_for_label }}" class="form-label">
+                <i class="fas fa-lock"></i> Mot de passe
+              </label>
+              {{ form.password }} {% if form.password.errors %}
+              <div class="invalid-feedback d-block">
+                {{ form.password.errors.0 }}
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="d-grid gap-2 mb-3">
+              <button type="submit" class="btn btn-primary btn-lg">
+                <i class="fas fa-sign-in-alt"></i> Se connecter
+              </button>
+            </div>
+
+            <!-- Forgot Password Link -->
+            <div class="text-center">
+              <small>
+                <a href="#" class="text-decoration-none"
+                  >Mot de passe oublié?</a
+                >
+              </small>
+            </div>
+          </form>
+
+          <!-- Demo Credentials -->
+          <div class="alert alert-info mt-4 small">
+            <i class="fas fa-info-circle"></i>
+            <strong>Démonstration:</strong> Utilisez les identifiants fournis
+            par votre administrateur.
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="text-center mt-4 text-muted small">
+        <p>&copy; 2026 FactureApp - Système de Facturation Professionnel</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Amélioration du formulaire de login */
+  .form-control {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    font-size: 1rem;
+  }
+
+  .form-control:focus {
+    border-color: #06b6d4;
+    box-shadow: 0 0 0 0.2rem rgba(6, 182, 212, 0.25);
+  }
+
+  .btn-lg {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .card {
+    border-radius: 0.75rem;
+    overflow: hidden;
+  }
+</style>
+{% endblock %}

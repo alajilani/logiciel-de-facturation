@@ -1,16 +1,19 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.decorators import login_required
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.db.models import Q, Sum, DecimalField, Count, F, Case, When
 from django.db.models.functions import Coalesce, TruncMonth
+from django.db import transaction
 from datetime import datetime, timedelta
 from decimal import Decimal
 import json
 from io import BytesIO
 from collections import defaultdict
+from django.views.decorators.http import require_POST
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -29,6 +32,7 @@ from .forms import (
     EmailTemplateForm, SendEmailForm, NotificationFilterForm
 )
 from .email_utils import send_invoice_email, send_quote_email, send_payment_reminder, send_payment_thank_you
+from .ai_assistant import generate_ai_reply
 from django.conf import settings
 
 
@@ -398,12 +402,22 @@ class InvoiceDetailView(DetailView):
 
 def invoice_create_view(request):
     """Create new invoice with items"""
+    from .email_utils import notify_invoice_created
+    
     if request.method == 'POST':
         form = InvoiceForm(request.POST)
         if form.is_valid():
             invoice = form.save(commit=False)
             invoice.invoice_number = get_next_invoice_number()
             invoice.save()
+            
+            # 🔔 CREATE REAL-TIME NOTIFICATION (Tier 4)
+            try:
+                if request.user.is_authenticated:
+                    notify_invoice_created(request.user, invoice)
+            except Exception as e:
+                print(f"Notification error: {str(e)}")
+            
             messages.success(request, 'Facture créée! Ajoutez maintenant les articles.')
             return redirect('invoice-update', pk=invoice.id)
     else:
@@ -430,7 +444,15 @@ def invoice_update_view(request, pk):
             if item_form.is_valid():
                 item = item_form.save(commit=False)
                 item.invoice = invoice
+                if item.product and not item.product.can_allocate(item.quantity):
+                    messages.error(
+                        request,
+                        f"Stock insuffisant pour {item.product.name}. Stock disponible: {item.product.stock_quantity}"
+                    )
+                    return redirect('invoice-update', pk=invoice.id)
                 item.save()
+                if item.product:
+                    item.product.decrease_stock(item.quantity)
                 update_invoice_totals(invoice)
                 messages.success(request, 'Article ajouté!')
                 return redirect('invoice-update', pk=invoice.id)
@@ -461,6 +483,8 @@ def invoice_delete_item(request, pk):
     """Delete invoice item"""
     item = get_object_or_404(InvoiceItem, pk=pk)
     invoice = item.invoice
+    if item.product:
+        item.product.increase_stock(item.quantity)
     item.delete()
     update_invoice_totals(invoice)
     messages.success(request, 'Article supprimé!')
@@ -494,6 +518,10 @@ class InvoiceDeleteView(DeleteView):
     success_url = reverse_lazy('invoice-list')
     
     def delete(self, request, *args, **kwargs):
+        invoice = self.get_object()
+        for item in invoice.items.select_related('product').all():
+            if item.product:
+                item.product.increase_stock(item.quantity)
         messages.success(request, 'Facture supprimée!')
         return super().delete(request, *args, **kwargs)
 
@@ -502,6 +530,8 @@ class InvoiceDeleteView(DeleteView):
 
 def add_payment(request, invoice_id):
     """Add payment to invoice"""
+    from .email_utils import send_payment_thank_you, notify_payment_received
+    
     invoice = get_object_or_404(Invoice, pk=invoice_id)
     
     if request.method == 'POST':
@@ -515,7 +545,20 @@ def add_payment(request, invoice_id):
             invoice.update_payment_status()
             invoice.save()
             
-            messages.success(request, 'Paiement enregistré!')
+            # 🔔 CREATE REAL-TIME NOTIFICATION (Tier 4)
+            try:
+                if request.user.is_authenticated:
+                    notify_payment_received(request.user, invoice, float(payment.amount))
+            except Exception as e:
+                print(f"Notification error: {str(e)}")
+            
+            # 📧 SEND THANK YOU EMAIL
+            try:
+                send_payment_thank_you(invoice, payment.amount)
+            except Exception as e:
+                print(f"Email sending error: {str(e)}")
+            
+            messages.success(request, f'Paiement de {payment.amount}€ enregistré! Email de confirmation envoyé.')
             return redirect('invoice-detail', pk=invoice.id)
     else:
         form = PaymentForm()
@@ -866,44 +909,65 @@ class QuoteDeleteView(DeleteView):
 
 def quote_to_invoice(request, pk):
     """Convert quote to invoice"""
+    from .email_utils import notify_invoice_created
+    
     quote = get_object_or_404(Quote, pk=pk)
     
     if quote.status == 'converted':
         messages.warning(request, 'Ce devis a déjà été converti en facture!')
         return redirect('quote-detail', pk=quote.id)
     
-    # Create invoice from quote
-    invoice = Invoice.objects.create(
-        invoice_number=get_next_invoice_number(),
-        client=quote.client,
-        date=datetime.now(),
-        due_date=datetime.now() + timedelta(days=30),
-        subtotal=quote.subtotal,
-        remise_percentage=quote.remise_percentage,
-        remise_amount=quote.remise_amount,
-        rabais_percentage=quote.rabais_percentage,
-        rabais_amount=quote.rabais_amount,
-        escompte_percentage=quote.escompte_percentage,
-        escompte_amount=quote.escompte_amount,
-        total_discount=quote.total_discount,
-        tva_amount=quote.tva_amount,
-        total=quote.total,
-    )
-    
-    # Copy items from quote to invoice
-    for quote_item in quote.items.all():
-        InvoiceItem.objects.create(
-            invoice=invoice,
-            description=quote_item.description,
-            quantity=quote_item.quantity,
-            price=quote_item.price,
-            product=quote_item.product,
+    with transaction.atomic():
+        quote_items = list(quote.items.select_related('product').all())
+        for quote_item in quote_items:
+            if quote_item.product and not quote_item.product.can_allocate(quote_item.quantity):
+                messages.error(
+                    request,
+                    f"Stock insuffisant pour convertir le devis: {quote_item.product.name}. Stock disponible: {quote_item.product.stock_quantity}"
+                )
+                return redirect('quote-detail', pk=quote.id)
+
+        # Create invoice from quote
+        invoice = Invoice.objects.create(
+            invoice_number=get_next_invoice_number(),
+            client=quote.client,
+            date=datetime.now(),
+            due_date=datetime.now() + timedelta(days=30),
+            subtotal=quote.subtotal,
+            remise_percentage=quote.remise_percentage,
+            remise_amount=quote.remise_amount,
+            rabais_percentage=quote.rabais_percentage,
+            rabais_amount=quote.rabais_amount,
+            escompte_percentage=quote.escompte_percentage,
+            escompte_amount=quote.escompte_amount,
+            total_discount=quote.total_discount,
+            tva_amount=quote.tva_amount,
+            total=quote.total,
         )
+
+        # Copy items from quote to invoice
+        for quote_item in quote_items:
+            InvoiceItem.objects.create(
+                invoice=invoice,
+                description=quote_item.description,
+                quantity=quote_item.quantity,
+                price=quote_item.price,
+                product=quote_item.product,
+            )
+            if quote_item.product:
+                quote_item.product.decrease_stock(quote_item.quantity)
+
+        # Update quote status
+        quote.status = 'converted'
+        quote.converted_invoice = invoice
+        quote.save()
     
-    # Update quote status
-    quote.status = 'converted'
-    quote.converted_invoice = invoice
-    quote.save()
+    # 🔔 CREATE REAL-TIME NOTIFICATION (Tier 4)
+    try:
+        if request.user.is_authenticated:
+            notify_invoice_created(request.user, invoice)
+    except Exception as e:
+        print(f"Notification error: {str(e)}")
     
     messages.success(request, f'Devis converti en facture {invoice.invoice_number}!')
     return redirect('invoice-detail', pk=invoice.id)
@@ -1062,6 +1126,8 @@ class NotificationListView(ListView):
 
 def send_invoice_by_email(request, pk):
     """Send invoice to client by email"""
+    from .email_utils import notify_invoice_sent
+    
     invoice = get_object_or_404(Invoice, pk=pk)
     
     if request.method == 'POST':
@@ -1074,7 +1140,14 @@ def send_invoice_by_email(request, pk):
             )
             
             if success:
-                messages.success(request, 'Email envoyé avec succès!')
+                # 🔔 CREATE REAL-TIME NOTIFICATION (Tier 4)
+                try:
+                    if request.user.is_authenticated:
+                        notify_invoice_sent(request.user, invoice)
+                except Exception as e:
+                    print(f"Notification error: {str(e)}")
+                
+                messages.success(request, f'Email envoyé avec succès à {invoice.client.email}!')
             else:
                 messages.error(request, 'Erreur lors de l\'envoi de l\'email.')
             
@@ -1196,3 +1269,43 @@ class AuditLogListView(ListView):
         context['actions'] = dict(AuditLog.ACTION_CHOICES)
         context['models'] = dict(AuditLog.MODEL_CHOICES)
         return context
+
+
+# ============== AI Assistant Views ==============
+
+
+@login_required
+def ai_assistant_view(request):
+    """Interactive AI assistant page."""
+    history = request.session.get('ai_chat_history', [])
+    return render(request, 'invoice_app/ai_assistant.html', {
+        'chat_history': history,
+        'ai_mode': 'local' if not settings.AI_CHAT_ENABLED else settings.AI_PROVIDER,
+    })
+
+
+@login_required
+@require_POST
+def api_ai_chat(request):
+    """Return a quick assistant reply as JSON."""
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except json.JSONDecodeError:
+        payload = {}
+
+    message = (payload.get('message') or '').strip()
+    if not message:
+        return JsonResponse({'reply': 'Écris un message pour commencer.'}, status=400)
+
+    history = request.session.get('ai_chat_history', [])
+    result = generate_ai_reply(message, history=history)
+
+    history.append({'role': 'user', 'content': message})
+    history.append({'role': 'assistant', 'content': result['reply']})
+    request.session['ai_chat_history'] = history[-20:]
+    request.session.modified = True
+
+    return JsonResponse({
+        'reply': result['reply'],
+        'mode': result.get('mode', 'local'),
+    })

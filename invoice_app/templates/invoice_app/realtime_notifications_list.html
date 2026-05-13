@@ -1,0 +1,413 @@
+{% extends "base.html" %} {% load static %} {% block title %}Notifications - {%
+endblock %} {% block content %}
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col">
+      <h1>🔔 Notifications Temps Réel (Tier 4)</h1>
+      <p class="text-muted">Toutes vos notifications et alertes</p>
+    </div>
+    <div class="col-auto">
+      <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+        <i class="fas fa-home"></i> Dashboard
+      </a>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">Filtres</h5>
+    </div>
+    <div class="card-body">
+      <form method="get" class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">Type</label>
+          <select name="notification_type" class="form-select">
+            <option value="">Tous les types</option>
+            <option value="payment_received">💰 Paiement Reçu</option>
+            <option value="invoice_overdue">⏱️ Facture en Retard</option>
+            <option value="new_invoice">📄 Nouvelle Facture</option>
+            <option value="new_quote">📝 Nouveau Devis</option>
+            <option value="anomaly_critical">🚨 Anomalie Critique</option>
+            <option value="payment_reminder">🔔 Rappel Paiement</option>
+            <option value="forecast_updated">📊 Prévision MAJ</option>
+            <option value="alert_acknowledged">✅ Alerte Reconnue</option>
+            <option value="export_completed">💾 Export Complété</option>
+            <option value="system_alert">⚠️ Alerte Système</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Priorité</label>
+          <select name="priority" class="form-select">
+            <option value="">Toutes</option>
+            <option value="low">🟢 Basse</option>
+            <option value="medium">🟡 Moyenne</option>
+            <option value="high">🟠 Élevée</option>
+            <option value="critical">🔴 Critique</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Statut</label>
+          <select name="status" class="form-select">
+            <option value="">Tous</option>
+            <option value="unread">Non lues</option>
+            <option value="read">Lues</option>
+            <option value="dismissed">Rejetées</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">&nbsp;</label>
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="fas fa-filter"></i> Filtrer
+          </button>
+          <a
+            href="{% url 'notification-list' %}"
+            class="btn btn-secondary w-100 mt-2"
+          >
+            <i class="fas fa-redo"></i> Réinitialiser
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Barre d'actions -->
+  {% if notifications %}
+  <div class="card mb-4">
+    <div class="card-body">
+      <form method="post" class="d-inline">
+        {% csrf_token %}
+        <button
+          type="button"
+          class="btn btn-sm btn-success"
+          onclick="markAllAsRead()"
+        >
+          <i class="fas fa-check"></i> Marquer tous comme lus
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm btn-warning"
+          onclick="dismissAll()"
+        >
+          <i class="fas fa-times"></i> Rejeter tous
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- List de notifications -->
+  {% if notifications %} {% for notif in notifications %}
+  <div
+    class="card mb-3 notification-card {% if notif.is_read %}opacity-75{% endif %}"
+    data-notif-id="{{ notif.id }}"
+  >
+    <div class="card-body">
+      <div class="row align-items-start">
+        <div class="col">
+          <!-- Icon & Title -->
+          <div class="d-flex align-items-center mb-2">
+            {% if notif.notification_type == 'payment_received' %}
+            <i class="fas fa-2x fa-check-circle text-success me-3"></i>
+            {% elif notif.notification_type == 'invoice_overdue' %}
+            <i class="fas fa-2x fa-exclamation-circle text-danger me-3"></i>
+            {% elif notif.notification_type == 'anomaly_critical' %}
+            <i class="fas fa-2x fa-radiation text-danger me-3"></i>
+            {% elif notif.notification_type == 'new_invoice' %}
+            <i class="fas fa-2x fa-file-invoice text-info me-3"></i>
+            {% elif notif.notification_type == 'new_quote' %}
+            <i class="fas fa-2x fa-file-alt text-primary me-3"></i>
+            {% else %}
+            <i class="fas fa-2x fa-bell text-warning me-3"></i>
+            {% endif %}
+            <div>
+              <h5 class="mb-1">{{ notif.title }}</h5>
+              <p class="text-muted mb-0">
+                {{ notif.get_notification_type_display }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Message -->
+          <p class="card-text mb-3">{{ notif.message }}</p>
+
+          <!-- Meta Info -->
+          <div class="text-muted small">
+            <i class="fas fa-clock"></i>
+            {{ notif.created_at|timesince }} ago {% if notif.read_at %}
+            <span class="ms-3">
+              <i class="fas fa-eye"></i> Lue le {{ notif.read_at|date:"d/m/Y
+              H:i" }}
+            </span>
+            {% endif %} {% if notif.client %}
+            <span class="ms-3">
+              <i class="fas fa-user"></i> Client: {{ notif.client.name }}
+            </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Badges & Actions -->
+        <div class="col-auto text-end">
+          <!-- Priority Badge -->
+          <span
+            class="badge bg-{% if notif.priority == 'critical' %}danger{% elif notif.priority == 'high' %}warning{% elif notif.priority == 'medium' %}info{% else %}secondary{% endif %} mb-2 d-block"
+            data-priority-badge
+          >
+            {{ notif.get_priority_display }}
+          </span>
+
+          <!-- Status Badge -->
+          {% if notif.is_dismissed %}
+          <span class="badge bg-secondary d-block mb-2" data-status-badge
+            >Rejetée</span
+          >
+          {% elif notif.is_read %}
+          <span class="badge bg-success d-block mb-2" data-status-badge
+            >Lue</span
+          >
+          {% else %}
+          <span class="badge bg-warning d-block mb-2" data-status-badge
+            >Non lue</span
+          >
+          {% endif %}
+
+          <!-- Action Buttons -->
+          <div class="btn-group btn-group-sm" role="group">
+            {% if not notif.is_read %}
+            <button
+              type="button"
+              class="btn btn-outline-success"
+              onclick="markAsRead({{ notif.id }})"
+              title="Marquer comme lue"
+            >
+              <i class="fas fa-check"></i>
+            </button>
+            {% endif %} {% if not notif.is_dismissed %}
+            <button
+              type="button"
+              class="btn btn-outline-danger"
+              onclick="dismissNotification({{ notif.id }})"
+              title="Rejeter"
+            >
+              <i class="fas fa-times"></i>
+            </button>
+            {% endif %} {% if notif.action_url %}
+            <a
+              href="{{ notif.action_url }}"
+              class="btn btn-outline-primary"
+              title="Voir détails"
+            >
+              <i class="fas fa-arrow-right"></i>
+            </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- Pagination -->
+  {% if is_paginated %}
+  <nav aria-label="Pagination" class="mt-4">
+    <ul class="pagination justify-content-center">
+      {% if page_obj.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?page=1">
+          <i class="fas fa-chevron-left"></i> Première
+        </a>
+      </li>
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+          Précédente
+        </a>
+      </li>
+      {% endif %}
+
+      <li class="page-item active">
+        <span class="page-link">
+          Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}
+        </span>
+      </li>
+
+      {% if page_obj.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+          Suivante
+        </a>
+      </li>
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">
+          Dernière <i class="fas fa-chevron-right"></i>
+        </a>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %} {% else %}
+  <!-- Empty state -->
+  <div class="alert alert-info text-center py-5">
+    <i class="fas fa-bell fa-3x mb-3"></i>
+    <h4>Aucune notification</h4>
+    <p class="text-muted">Vous n'avez aucune notification pour le moment</p>
+  </div>
+  {% endif %}
+</div>
+
+<style>
+  .notification-card {
+    border-left: 4px solid #06b6d4;
+    transition: all 0.2s;
+  }
+  .notification-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+  .notification-card.opacity-75 {
+    opacity: 0.75;
+    border-left-color: #ccc;
+  }
+</style>
+
+<script>
+  function markAsRead(notifId) {
+    const card = document.querySelector(`[data-notif-id="${notifId}"]`);
+
+    fetch(`/notifications/${notifId}/mark-read/`, {
+      method: "POST",
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        "X-CSRFToken": getCookie("csrftoken"),
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.status === "success") {
+          card.classList.add("opacity-75");
+
+          const statusBadge = card.querySelector("[data-status-badge]");
+          if (statusBadge) {
+            statusBadge.textContent = "Lue";
+            statusBadge.className = "badge bg-success d-block mb-2";
+          }
+
+          // Masquer le bouton marquer comme lue
+          const readBtn = card.querySelector('button[onclick^="markAsRead"]');
+          if (readBtn) readBtn.style.display = "none";
+
+          showNotification("success", "✓ Notification marquée comme lue");
+        }
+      })
+      .catch((error) => {
+        console.error("Erreur:", error);
+        showNotification("danger", "❌ Erreur lors de la mise à jour");
+      });
+  }
+
+  function dismissNotification(notifId) {
+    const card = document.querySelector(`[data-notif-id="${notifId}"]`);
+
+    fetch(`/notifications/${notifId}/dismiss/`, {
+      method: "POST",
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        "X-CSRFToken": getCookie("csrftoken"),
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.status === "success") {
+          // Animer la disparition de la notification
+          card.style.animation = "slideOut 0.3s ease-out";
+          setTimeout(() => {
+            card.remove();
+
+            // Vérifier s'il y a des notifications restantes
+            if (document.querySelectorAll(".notification-card").length === 0) {
+              location.reload();
+            }
+          }, 300);
+
+          showNotification("success", "✓ Notification rejetée");
+        }
+      })
+      .catch((error) => {
+        console.error("Erreur:", error);
+        showNotification("danger", "❌ Erreur lors du rejet");
+      });
+  }
+
+  function markAllAsRead() {
+    const cards = document.querySelectorAll("[data-notif-id]");
+    if (cards.length === 0) {
+      showNotification("info", "Aucune notification à marquer");
+      return;
+    }
+
+    cards.forEach((card) => {
+      const notifId = card.dataset.notifId;
+      if (!card.classList.contains("opacity-75")) {
+        markAsRead(notifId);
+      }
+    });
+  }
+
+  function dismissAll() {
+    if (confirm("Êtes-vous sûr de vouloir rejeter TOUTES les notifications?")) {
+      const cards = document.querySelectorAll("[data-notif-id]");
+      cards.forEach((card) => {
+        const notifId = card.dataset.notifId;
+        dismissNotification(notifId);
+      });
+    }
+  }
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === name + "=") {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  function showNotification(type, message) {
+    const alertDiv = document.createElement("div");
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.top = "20px";
+    alertDiv.style.right = "20px";
+    alertDiv.style.zIndex = "9999";
+    alertDiv.style.minWidth = "300px";
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    document.body.appendChild(alertDiv);
+
+    // Auto-close after 3 seconds
+    setTimeout(() => {
+      alertDiv.remove();
+    }, 3000);
+  }
+
+  // Animation CSS
+  const style = document.createElement("style");
+  style.textContent = `
+@keyframes slideOut {
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+`;
+  document.head.appendChild(style);
+</script>
+{% endblock %}

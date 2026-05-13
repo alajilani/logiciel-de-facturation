@@ -13,7 +13,8 @@ import csv
 from decimal import Decimal
 from .models import (
     AnomalyDetection, RevenueForecast, IntelligentAlert, 
-    AccountingSynchronization, Invoice, Client, Payment, Product, AuditLog
+    AccountingSynchronization, Invoice, Client, Payment, Product, AuditLog,
+    RealtimeNotification, AdvancedDashboard
 )
 from .forms import (
     AnomalyFilterForm, IntelligentAlertFilterForm, RevenueForecastForm,
@@ -497,81 +498,127 @@ def ia_dashboard(request):
 
 
 # ============================================================================
-# TIER 4 - REAL-TIME NOTIFICATIONS & ADVANCED DASHBOARD
+# TIER 4 - REAL-TIME NOTIFICATIONS (Notifications temps réel)
 # ============================================================================
 
-from .models import RealtimeNotification, AdvancedDashboard
+
+def _is_ajax_request(request):
+    return request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+
+def _json_notification_response(status, message, http_status=200, **extra):
+    from django.http import JsonResponse
+
+    payload = {
+        'status': status,
+        'message': message,
+    }
+    payload.update(extra)
+    return JsonResponse(payload, status=http_status)
+
+@login_required
+def mark_notification_read(request, pk):
+    """Marquer une notification comme lue"""
+    from django.utils import timezone
+
+    if request.method != 'POST':
+        return _json_notification_response('error', 'Méthode non autorisée', http_status=405)
+    
+    notification = get_object_or_404(RealtimeNotification, pk=pk, user=request.user)
+    notification.is_read = True
+    notification.read_at = timezone.now()
+    notification.save()
+    
+    if _is_ajax_request(request):
+        return _json_notification_response('success', 'Notification marquée comme lue', notification_id=notification.id)
+    return redirect('notification-list')
 
 
 @login_required
-def notification_list(request):
-    """Liste des notifications real-time"""
-    notifications = RealtimeNotification.objects.filter(user=request.user).order_by('-created_at')
-    unread_count = notifications.filter(is_read=False).count()
+def dismiss_notification(request, pk):
+    """Rejeter/Fermer une notification"""
+
+    if request.method != 'POST':
+        return _json_notification_response('error', 'Méthode non autorisée', http_status=405)
     
-    paginator = Paginator(notifications, 15)
-    page_number = request.GET.get('page')
-    notifications = paginator.get_page(page_number)
+    notification = get_object_or_404(RealtimeNotification, pk=pk, user=request.user)
+    notification.is_dismissed = True
+    notification.save()
     
-    return render(request, 'invoice_app/notification_list.html', {
-        'notifications': notifications,
-        'unread_count': unread_count,
+    if _is_ajax_request(request):
+        return _json_notification_response('success', 'Notification rejetée', notification_id=notification.id)
+    return redirect('notification-list')
+
+
+@login_required
+def get_unread_notifications_count(request):
+    """API pour obtenir le nombre de notifications non-lues (AJAX)"""
+    from django.http import JsonResponse
+    from .models import RealtimeNotification
+    
+    count = RealtimeNotification.objects.filter(
+        user=request.user, 
+        is_read=False, 
+        is_dismissed=False
+    ).count()
+    
+    return JsonResponse({
+        'unread_count': count,
+        'status': 'success'
     })
 
 
 @login_required
-def mark_notification_read(request, pk):
-    """Marquer notification comme lue"""
-    notification = get_object_or_404(RealtimeNotification, pk=pk, user=request.user)
-    notification.mark_as_read()
-    messages.success(request, "Notification marquée comme lue")
-    return redirect('notification_list')
-
-
-@login_required
 def advanced_dashboard_view(request):
-    """Tableau de bord avancé avec KPIs personnalisés"""
+    """Tableau de bord avancé personnalisable - Tier 4"""
+    from .models import AdvancedDashboard, RealtimeNotification
+    import json
+    
+    # Récupérer ou créer le dashboard de l'utilisateur
+    dashboard, created = AdvancedDashboard.objects.get_or_create(user=request.user)
+    
+    # Statistiques générales
+    total_invoices = Invoice.objects.count()
+    total_clients = Client.objects.count()
+    total_revenue = Invoice.objects.filter(payment_status='paid').aggregate(
+        total=Sum('total')
+    )['total'] or Decimal('0')
+    
+    pending_invoices = Invoice.objects.filter(payment_status__in=['pending', 'partial']).count()
+    
+    # Notifications récentes
+    recent_notifications = RealtimeNotification.objects.filter(
+        user=request.user,
+        is_dismissed=False
+    ).order_by('-created_at')[:5]
+    
+    # Prévisions (Tier 3)
     try:
-        dashboard = AdvancedDashboard.objects.get(user=request.user)
-    except AdvancedDashboard.DoesNotExist:
-        dashboard = AdvancedDashboard.objects.create(user=request.user)
+        latest_forecast = RevenueForecast.objects.latest('created_at')
+    except:
+        latest_forecast = None
     
-    dashboard.increment_views()
+    # Anomalies (Tier 3)
+    recent_anomalies = AnomalyDetection.objects.all().order_by('-detected_at')[:5]
     
-    # Récupérer données pour KPIs
-    from django.db.models import Sum, Count, Q
-    
-    invoices = Invoice.objects.all()
-    payments = Payment.objects.all()
-    clients = Client.objects.all()
-    anomalies = AnomalyDetection.objects.all()
-    alerts = IntelligentAlert.objects.all()
-    
-    kpi_data = {
-        'total_revenue': invoices.aggregate(Sum('total'))['total__sum'] or 0,
-        'total_invoices': invoices.count(),
-        'paid_invoices': invoices.filter(payment_status='paid').count(),
-        'pending_invoices': invoices.filter(payment_status='pending').count(),
-        'total_clients': clients.count(),
-        'active_alerts': alerts.filter(is_acknowledged=False).count(),
-        'total_anomalies': anomalies.count(),
-        'unresolved_anomalies': anomalies.filter(is_resolved=False).count(),
-    }
-    
-    # Données pour graphiques
-    from django.utils import timezone
-    from datetime import timedelta
-    
-    last_30_days = timezone.now() - timedelta(days=30)
-    monthly_invoices = invoices.filter(date__gte=last_30_days).values('date__year', 'date__month').annotate(
-        total=Sum('total'), count=Count('id')
-    ).order_by('date__year', 'date__month')
+    # Alertes intelligentes (Tier 3)
+    intelligent_alerts = IntelligentAlert.objects.filter(is_acknowledged=False).order_by('-created_at')[:5]
     
     context = {
         'dashboard': dashboard,
-        'kpi_data': kpi_data,
-        'monthly_invoices': list(monthly_invoices),
-        'total_views': dashboard.total_views,
+        'total_invoices': total_invoices,
+        'total_clients': total_clients,
+        'total_revenue': total_revenue,
+        'pending_invoices': pending_invoices,
+        'recent_notifications': recent_notifications,
+        'latest_forecast': latest_forecast,
+        'recent_anomalies': recent_anomalies,
+        'intelligent_alerts': intelligent_alerts,
+        'unread_notifications_count': RealtimeNotification.objects.filter(
+            user=request.user,
+            is_read=False,
+            is_dismissed=False
+        ).count(),
     }
     
     return render(request, 'invoice_app/advanced_dashboard.html', context)
@@ -580,25 +627,119 @@ def advanced_dashboard_view(request):
 @login_required
 def dashboard_settings(request):
     """Paramètres du tableau de bord avancé"""
-    try:
-        dashboard = AdvancedDashboard.objects.get(user=request.user)
-    except AdvancedDashboard.DoesNotExist:
-        dashboard = AdvancedDashboard.objects.create(user=request.user)
+    from .models import AdvancedDashboard
+    
+    dashboard, created = AdvancedDashboard.objects.get_or_create(user=request.user)
     
     if request.method == 'POST':
-        dashboard.title = request.POST.get('title', dashboard.title)
-        dashboard.default_period = request.POST.get('default_period', dashboard.default_period)
-        dashboard.color_scheme = request.POST.get('color_scheme', dashboard.color_scheme)
+        dashboard.title = request.POST.get('title', 'Tableau de Bord')
+        dashboard.default_period = request.POST.get('default_period', 'monthly')
+        dashboard.color_scheme = request.POST.get('color_scheme', 'auto')
         dashboard.auto_refresh = request.POST.get('auto_refresh') == 'on'
-        dashboard.refresh_interval = int(request.POST.get('refresh_interval', dashboard.refresh_interval))
-        dashboard.enable_notifications = request.POST.get('enable_notifications') == 'on'
+        dashboard.refresh_interval = int(request.POST.get('refresh_interval', 30))
+        dashboard.show_forecasts = request.POST.get('show_forecasts') == 'on'
+        dashboard.show_anomalies = request.POST.get('show_anomalies') == 'on'
+        dashboard.show_alerts = request.POST.get('show_alerts') == 'on'
+        dashboard.is_enabled = request.POST.get('is_enabled') == 'on'
         dashboard.save()
         
-        messages.success(request, "Paramètres du tableau de bord mis à jour!")
-        return redirect('advanced_dashboard')
+        messages.success(request, 'Paramètres du tableau de bord mis à jour avec succès!')
+        return redirect('advanced-dashboard')
     
     context = {
         'dashboard': dashboard,
-        'period_choices': AdvancedDashboard.PERIODS,
+        'period_choices': AdvancedDashboard.PERIOD_CHOICES,
+        'theme_choices': AdvancedDashboard.THEME_CHOICES,
     }
+    
     return render(request, 'invoice_app/dashboard_settings.html', context)
+
+
+@login_required
+def get_dashboard_widgets(request):
+    """API pour obtenir les données des widgets du dashboard (AJAX)"""
+    from django.http import JsonResponse
+    import json
+    
+    period = request.GET.get('period', 'monthly')
+    
+    # Calcul des données selon la période
+    if period == 'daily':
+        from datetime import timedelta
+        date_from = datetime.now().date() - timedelta(days=1)
+    elif period == 'weekly':
+        from datetime import timedelta
+        date_from = datetime.now().date() - timedelta(days=7)
+    elif period == 'monthly':
+        from datetime import timedelta
+        date_from = datetime.now().date() - timedelta(days=30)
+    elif period == 'quarterly':
+        from datetime import timedelta
+        date_from = datetime.now().date() - timedelta(days=90)
+    elif period == 'yearly':
+        from datetime import timedelta
+        date_from = datetime.now().date() - timedelta(days=365)
+    else:
+        date_from = None
+    
+    # Données widgets
+    invoices = Invoice.objects.filter(date__gte=date_from) if date_from else Invoice.objects.all()
+    
+    widgets_data = {
+        'total_invoices': invoices.count(),
+        'total_revenue': float(invoices.filter(payment_status='paid').aggregate(
+            total=Sum('total')
+        )['total'] or 0),
+        'pending_invoices': invoices.filter(payment_status__in=['pending', 'partial']).count(),
+        'average_invoice': float(invoices.aggregate(avg=Avg('total'))['avg'] or 0),
+        'total_clients': Client.objects.count(),
+        'conversion_rate': 0,  # À calculer selon votre logique
+    }
+    
+    return JsonResponse(widgets_data)
+
+
+# ============================================================================
+# REAL-TIME NOTIFICATIONS - Notifications en temps réel (Tier 4)
+# ============================================================================
+
+@login_required
+def notification_list_realtime(request):
+    """Afficher les notifications en temps réel avec filtres"""
+    notifications = RealtimeNotification.objects.filter(
+        user=request.user
+    ).order_by('-created_at')
+    
+    # Filtres
+    notification_type = request.GET.get('notification_type')
+    priority = request.GET.get('priority')
+    status = request.GET.get('status')
+    
+    if notification_type:
+        notifications = notifications.filter(notification_type=notification_type)
+    
+    if priority:
+        notifications = notifications.filter(priority=priority)
+    
+    if status == 'unread':
+        notifications = notifications.filter(is_read=False, is_dismissed=False)
+    elif status == 'read':
+        notifications = notifications.filter(is_read=True)
+    elif status == 'dismissed':
+        notifications = notifications.filter(is_dismissed=True)
+    
+    # Pagination
+    paginator = Paginator(notifications, 50)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'notifications': page_obj.object_list,
+        'page_obj': page_obj,
+        'is_paginated': paginator.num_pages > 1,
+    }
+    
+    return render(request, 'invoice_app/realtime_notifications_list.html', context)
+
+
+

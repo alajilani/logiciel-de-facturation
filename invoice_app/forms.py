@@ -26,12 +26,15 @@ class ClientForm(forms.ModelForm):
 class ProductForm(forms.ModelForm):
     class Meta:
         model = Product
-        fields = ['name', 'price', 'reference', 'description']
+        fields = ['name', 'price', 'reference', 'description', 'stock_quantity', 'low_stock_threshold', 'track_stock']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nom du produit'}),
             'price': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Prix', 'step': '0.01'}),
             'reference': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Référence'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Description'}),
+            'stock_quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'placeholder': 'Stock'}),
+            'low_stock_threshold': forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'placeholder': 'Seuil d\'alerte'}),
+            'track_stock': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
 

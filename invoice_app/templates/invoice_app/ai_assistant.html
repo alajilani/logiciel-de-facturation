@@ -1,0 +1,245 @@
+{% extends "base.html" %} {% load static %} {% block title %}Assistant IA -
+FactureApp{% endblock %} {% block content %}
+<div class="page-header">
+  <div>
+    <h1><i class="bi bi-stars text-primary"></i> Assistant IA</h1>
+    <p class="text-muted mb-0">
+      Réponses rapides pour la facturation, les devis, les emails et le projet.
+    </p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div
+        class="card-header d-flex justify-content-between align-items-center"
+      >
+        <h5 class="mb-0"><i class="bi bi-chat-dots me-2"></i>Chat en direct</h5>
+        <span class="badge bg-info text-white"
+          >Mode {{ ai_mode|default:"local" }}</span
+        >
+      </div>
+      <div class="card-body d-flex flex-column" style="min-height: 560px">
+        <div
+          id="chatMessages"
+          class="flex-grow-1 mb-3"
+          style="overflow-y: auto; max-height: 420px; padding-right: 0.5rem"
+        >
+          {% if chat_history %} {% for item in chat_history %}
+          <div
+            class="chat-message {% if item.role == 'user' %}user-message{% else %}assistant-message{% endif %}"
+          >
+            <div
+              class="chat-bubble {% if item.role == 'user' %}user-bubble{% else %}assistant-bubble{% endif %}"
+            >
+              {{ item.content }}
+            </div>
+          </div>
+          {% endfor %} {% else %}
+          <div class="chat-message assistant-message">
+            <div class="chat-bubble assistant-bubble">
+              Bonjour, je suis l’assistant FactureApp. Pose-moi une question sur
+              les factures, devis, emails, notifications, le logo ou le projet.
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        <div id="typingIndicator" class="text-muted small mb-2 d-none">
+          <span
+            class="spinner-border spinner-border-sm me-2"
+            role="status"
+            aria-hidden="true"
+          ></span>
+          L’assistant répond...
+        </div>
+
+        <form id="chatForm" class="mt-auto">
+          {% csrf_token %}
+          <div class="input-group input-group-lg">
+            <textarea
+              id="chatInput"
+              class="form-control"
+              rows="2"
+              placeholder="Écris ta question ici..."
+            ></textarea>
+            <button class="btn btn-primary" type="submit">
+              <i class="bi bi-send"></i>
+            </button>
+          </div>
+          <div class="d-flex flex-wrap gap-2 mt-3">
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-primary suggestion"
+              data-message="Explique-moi comment envoyer une facture par email"
+            >
+              Envoyer une facture
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-primary suggestion"
+              data-message="Comment fonctionne le logo de l'application ?"
+            >
+              Logo
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-primary suggestion"
+              data-message="Que manque-t-il encore pour la gestion de stock ?"
+            >
+              Stock
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-primary suggestion"
+              data-message="Le portail client est-il prêt ?"
+            >
+              Portail client
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-4">
+      <div class="card-header"><h5 class="mb-0">Ce que je peux faire</h5></div>
+      <div class="card-body">
+        <ul class="mb-0 ps-3">
+          <li>Répondre sur les factures et devis</li>
+          <li>Expliquer les emails et notifications</li>
+          <li>Guider sur la configuration locale</li>
+          <li>Te dire ce qui reste à compléter</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h5 class="mb-0">Astuce</h5></div>
+      <div class="card-body">
+        <p class="mb-0 text-muted">
+          Pour un vrai assistant IA, configure <code>AI_PROVIDER</code> et
+          <code>AI_API_KEY</code>. Sans clé, le chat reste rapide et fonctionne
+          en local.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .chat-message {
+    display: flex;
+    margin-bottom: 0.75rem;
+  }
+
+  .user-message {
+    justify-content: flex-end;
+  }
+
+  .assistant-message {
+    justify-content: flex-start;
+  }
+
+  .chat-bubble {
+    max-width: min(85%, 760px);
+    padding: 0.85rem 1rem;
+    border-radius: 1rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .user-bubble {
+    background: linear-gradient(
+      135deg,
+      var(--primary-color),
+      var(--primary-dark)
+    );
+    color: white;
+    border-bottom-right-radius: 0.35rem;
+  }
+
+  .assistant-bubble {
+    background: #f8fafc;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-bottom-left-radius: 0.35rem;
+  }
+</style>
+
+<script>
+  const chatForm = document.getElementById("chatForm");
+  const chatInput = document.getElementById("chatInput");
+  const chatMessages = document.getElementById("chatMessages");
+  const typingIndicator = document.getElementById("typingIndicator");
+  const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
+
+  function appendMessage(role, text) {
+    const wrapper = document.createElement("div");
+    wrapper.className = `chat-message ${role}-message`;
+
+    const bubble = document.createElement("div");
+    bubble.className = `chat-bubble ${role}-bubble`;
+    bubble.textContent = text;
+
+    wrapper.appendChild(bubble);
+    chatMessages.appendChild(wrapper);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  async function sendMessage(message) {
+    if (!message.trim()) {
+      return;
+    }
+
+    appendMessage("user", message);
+    typingIndicator.classList.remove("d-none");
+    chatInput.value = "";
+    chatInput.focus();
+
+    try {
+      const response = await fetch('{% url "api-ai-chat" %}', {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken,
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({ message }),
+      });
+
+      const data = await response.json();
+      appendMessage(
+        "assistant",
+        data.reply || "Je n'ai pas pu générer de réponse pour le moment.",
+      );
+    } catch (error) {
+      appendMessage(
+        "assistant",
+        "Erreur de connexion. Réessaie dans quelques secondes.",
+      );
+    } finally {
+      typingIndicator.classList.add("d-none");
+    }
+  }
+
+  chatForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    sendMessage(chatInput.value);
+  });
+
+  document.querySelectorAll(".suggestion").forEach((button) => {
+    button.addEventListener("click", () => sendMessage(button.dataset.message));
+  });
+
+  chatInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      chatForm.requestSubmit();
+    }
+  });
+</script>
+{% endblock %}

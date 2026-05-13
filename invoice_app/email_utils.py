@@ -297,3 +297,138 @@ def send_payment_thank_you(invoice, payment_amount):
     )
     
     return success
+
+
+# ============================================================================
+# TIER 4 - REAL-TIME NOTIFICATIONS
+# ============================================================================
+
+def create_realtime_notification(user, notification_type, title, message, priority='medium', 
+                                  client=None, invoice=None, action_url=None):
+    """
+    Create a real-time notification for a user (Tier 4)
+    
+    Args:
+        user: User instance
+        notification_type: Type of notification (from NOTIFICATION_TYPES)
+        title: Notification title
+        message: Notification message
+        priority: 'low', 'medium', 'high', 'critical'
+        client: Associated client (optional)
+        invoice: Associated invoice (optional)
+        action_url: URL to redirect to when clicked (optional)
+    
+    Returns:
+        RealtimeNotification: Created notification instance
+    """
+    from .models import RealtimeNotification
+    
+    notification = RealtimeNotification.objects.create(
+        user=user,
+        notification_type=notification_type,
+        title=title,
+        message=message,
+        priority=priority,
+        client=client,
+        invoice=invoice,
+        action_url=action_url,
+        is_read=False,
+        is_dismissed=False
+    )
+    return notification
+
+
+def notify_invoice_created(user, invoice):
+    """
+    Notify when a new invoice is created (Tier 4)
+    """
+    create_realtime_notification(
+        user=user,
+        notification_type='new_invoice',
+        title=f'Nouvelle facture créée: {invoice.invoice_number}',
+        message=f'Facture {invoice.invoice_number} créée pour le client {invoice.client.name}',
+        priority='medium',
+        client=invoice.client,
+        invoice=invoice,
+        action_url=f'/invoices/{invoice.id}/'
+    )
+
+
+def notify_invoice_sent(user, invoice):
+    """
+    Notify when invoice is sent by email (Tier 4)
+    """
+    create_realtime_notification(
+        user=user,
+        notification_type='payment_reminder',
+        title=f'Facture envoyée: {invoice.invoice_number}',
+        message=f'Facture {invoice.invoice_number} envoyée au client {invoice.client.name} ({invoice.client.email})',
+        priority='medium',
+        client=invoice.client,
+        invoice=invoice,
+        action_url=f'/invoices/{invoice.id}/'
+    )
+
+
+def notify_payment_received(user, invoice, payment_amount):
+    """
+    Notify when payment is received (Tier 4)
+    """
+    create_realtime_notification(
+        user=user,
+        notification_type='payment_received',
+        title=f'Paiement reçu: {payment_amount}€',
+        message=f'Paiement de {payment_amount}€ reçu pour la facture {invoice.invoice_number}',
+        priority='high',
+        client=invoice.client,
+        invoice=invoice,
+        action_url=f'/invoices/{invoice.id}/'
+    )
+
+
+def notify_invoice_overdue(user, invoice):
+    """
+    Notify when invoice is overdue (Tier 4)
+    """
+    from datetime import datetime
+    days_overdue = (datetime.now().date() - invoice.due_date).days
+    
+    create_realtime_notification(
+        user=user,
+        notification_type='invoice_overdue',
+        title=f'⚠️ Facture en retard: {invoice.invoice_number}',
+        message=f'Facture {invoice.invoice_number} en retard depuis {days_overdue} jours. Montant dû: {invoice.remaining_amount:.2f}€',
+        priority='critical',
+        client=invoice.client,
+        invoice=invoice,
+        action_url=f'/invoices/{invoice.id}/'
+    )
+
+
+def notify_quote_created(user, quote):
+    """
+    Notify when a new quote is created (Tier 4)
+    """
+    create_realtime_notification(
+        user=user,
+        notification_type='new_quote',
+        title=f'Nouveau devis créé: {quote.quote_number}',
+        message=f'Devis {quote.quote_number} créé pour le client {quote.client.name}',
+        priority='medium',
+        client=quote.client,
+        action_url=f'/quotes/{quote.id}/'
+    )
+
+
+def notify_anomaly_detected(user, anomaly_type, title, message):
+    """
+    Notify when an anomaly is detected (Tier 3 → Tier 4)
+    """
+    create_realtime_notification(
+        user=user,
+        notification_type='anomaly_critical',
+        title=f'🚨 Anomalie détectée: {title}',
+        message=message,
+        priority='critical'
+    )
+

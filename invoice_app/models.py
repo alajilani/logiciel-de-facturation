@@ -30,6 +30,9 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)], verbose_name="Prix")
     reference = models.CharField(max_length=100, unique=True, verbose_name="Référence")
     description = models.TextField(blank=True, null=True, verbose_name="Description")
+    stock_quantity = models.IntegerField(default=0, validators=[MinValueValidator(0)], verbose_name="Stock")
+    low_stock_threshold = models.IntegerField(default=5, validators=[MinValueValidator(0)], verbose_name="Seuil d'alerte")
+    track_stock = models.BooleanField(default=True, verbose_name="Suivre le stock")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -40,6 +43,27 @@ class Product(models.Model):
     
     def __str__(self):
         return self.name
+
+    @property
+    def is_low_stock(self):
+        return self.track_stock and self.stock_quantity <= self.low_stock_threshold
+
+    def can_allocate(self, quantity):
+        if not self.track_stock:
+            return True
+        return self.stock_quantity >= quantity
+
+    def decrease_stock(self, quantity):
+        if not self.track_stock:
+            return
+        self.stock_quantity = max(0, self.stock_quantity - quantity)
+        self.save(update_fields=['stock_quantity', 'updated_at'])
+
+    def increase_stock(self, quantity):
+        if not self.track_stock:
+            return
+        self.stock_quantity += quantity
+        self.save(update_fields=['stock_quantity', 'updated_at'])
 
 
 class CompanyInfo(models.Model):
@@ -554,11 +578,8 @@ class AccountingSynchronization(models.Model):
         return f"{self.get_export_type_display()} ({self.get_status_display()}) - {self.start_date} à {self.end_date}"
 
 
-# TIER 4 - NOTIFICATIONS REAL-TIME & DASHBOARD AVANCÉ
-
 class RealtimeNotification(models.Model):
-    """Real-time notifications with WebSockets support"""
-    
+    """Notifications temps réel - Tier 4"""
     NOTIFICATION_TYPES = [
         ('anomaly_critical', 'Anomalie Critique'),
         ('payment_received', 'Paiement Reçu'),
@@ -579,60 +600,19 @@ class RealtimeNotification(models.Model):
         ('critical', 'Critique'),
     ]
     
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        verbose_name="Utilisateur",
-        related_name="realtime_notifications"
-    )
-    
-    notification_type = models.CharField(
-        max_length=50,
-        choices=NOTIFICATION_TYPES,
-        verbose_name="Type"
-    )
-    
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='realtime_notifications', verbose_name="Utilisateur")
+    notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES, verbose_name="Type")
     title = models.CharField(max_length=255, verbose_name="Titre")
     message = models.TextField(verbose_name="Message")
-    priority = models.CharField(
-        max_length=20,
-        choices=PRIORITY_CHOICES,
-        default='medium',
-        verbose_name="Priorité"
-    )
-    
-    # Links to related objects
-    invoice = models.ForeignKey(
-        'Invoice',
-        on_delete=models.SET_NULL,
-        blank=True,
-        null=True,
-        verbose_name="Facture liée"
-    )
-    
-    client = models.ForeignKey(
-        'Client',
-        on_delete=models.SET_NULL,
-        blank=True,
-        null=True,
-        verbose_name="Client lié"
-    )
-    
-    # Status tracking
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium', verbose_name="Priorité")
     is_read = models.BooleanField(default=False, verbose_name="Est lu?")
     read_at = models.DateTimeField(blank=True, null=True, verbose_name="Lu le")
     is_dismissed = models.BooleanField(default=False, verbose_name="Est rejeté?")
-    
-    # Action link
-    action_url = models.CharField(
-        max_length=500,
-        blank=True,
-        null=True,
-        verbose_name="URL d'action"
-    )
-    
+    action_url = models.CharField(max_length=500, blank=True, null=True, verbose_name="URL d'action")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
     expires_at = models.DateTimeField(blank=True, null=True, verbose_name="Expire le")
+    client = models.ForeignKey(Client, on_delete=models.SET_NULL, blank=True, null=True, verbose_name="Client lié")
+    invoice = models.ForeignKey(Invoice, on_delete=models.SET_NULL, blank=True, null=True, verbose_name="Facture liée")
     
     class Meta:
         verbose_name = "Notification Real-time"
@@ -646,31 +626,11 @@ class RealtimeNotification(models.Model):
     
     def __str__(self):
         return f"{self.get_notification_type_display()} - {self.title}"
-    
-    def mark_as_read(self):
-        """Marquer notification comme lue"""
-        self.is_read = True
-        self.read_at = datetime.now()
-        self.save()
 
 
 class AdvancedDashboard(models.Model):
-    """Advanced Dashboard with custom KPIs and widgets"""
-    
-    WIDGET_TYPES = [
-        ('kpi_card', 'Carte KPI'),
-        ('chart_line', 'Graphique Linéaire'),
-        ('chart_bar', 'Graphique en Barres'),
-        ('chart_pie', 'Graphique Circulaire'),
-        ('chart_doughnut', 'Graphique Donut'),
-        ('table_data', 'Tableau de Données'),
-        ('stat_boxes', 'Boîtes Statistiques'),
-        ('recent_items', 'Éléments Récents'),
-        ('heatmap', 'Carte de Chaleur'),
-        ('timeline', 'Chronologie'),
-    ]
-    
-    PERIODS = [
+    """Tableau de bord avancé personnalisable - Tier 4"""
+    PERIOD_CHOICES = [
         ('daily', 'Quotidien'),
         ('weekly', 'Hebdomadaire'),
         ('monthly', 'Mensuel'),
@@ -679,78 +639,24 @@ class AdvancedDashboard(models.Model):
         ('custom', 'Personnalisé'),
     ]
     
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        verbose_name="Utilisateur",
-        related_name="advanced_dashboard"
-    )
+    THEME_CHOICES = [
+        ('light', 'Clair'),
+        ('dark', 'Sombre'),
+        ('auto', 'Automatique'),
+    ]
     
-    # Dashboard Configuration
-    title = models.CharField(
-        max_length=255,
-        default="Tableau de Bord",
-        verbose_name="Titre"
-    )
-    
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='advanced_dashboard', verbose_name="Utilisateur")
+    title = models.CharField(max_length=255, default='Tableau de Bord', verbose_name="Titre")
     is_enabled = models.BooleanField(default=True, verbose_name="Activé?")
-    
-    # Widget Configuration (JSON)
-    widgets_config = models.TextField(
-        default="[]",
-        verbose_name="Configuration des widgets"
-    )  # JSON array of widget configs
-    
-    # KPI Configuration
-    kpi_list = models.TextField(
-        default="[]",
-        verbose_name="Liste des KPIs"
-    )  # JSON array of selected KPIs
-    
-    # Display Preferences
-    default_period = models.CharField(
-        max_length=20,
-        choices=PERIODS,
-        default='monthly',
-        verbose_name="Période par défaut"
-    )
-    
-    color_scheme = models.CharField(
-        max_length=50,
-        default='auto',
-        verbose_name="Schéma de couleur"
-    )  # 'auto', 'light', 'dark', 'custom'
-    
-    # Refresh Settings
-    auto_refresh = models.BooleanField(
-        default=True,
-        verbose_name="Rafraîchissement auto?"
-    )
-    
-    refresh_interval = models.IntegerField(
-        default=300,
-        verbose_name="Intervalle rafraîchissement (secondes)"
-    )
-    
-    # Notifications Settings
-    enable_notifications = models.BooleanField(
-        default=True,
-        verbose_name="Notifications activées?"
-    )
-    
-    notification_thresholds = models.TextField(
-        default="{}",
-        verbose_name="Seuils de notification"
-    )  # JSON object with thresholds
-    
-    # Performance Tracking
-    total_views = models.IntegerField(default=0, verbose_name="Total vues")
-    last_accessed = models.DateTimeField(
-        blank=True,
-        null=True,
-        verbose_name="Dernier accès"
-    )
-    
+    widgets_config = models.TextField(default='[]', verbose_name="Configuration des widgets")
+    kpi_list = models.TextField(default='[]', verbose_name="Liste des KPIs")
+    default_period = models.CharField(max_length=20, choices=PERIOD_CHOICES, default='monthly', verbose_name="Période par défaut")
+    color_scheme = models.CharField(max_length=50, default='auto', verbose_name="Schéma de couleur")
+    auto_refresh = models.BooleanField(default=True, verbose_name="Rafraîchissement auto?")
+    refresh_interval = models.IntegerField(default=30, verbose_name="Intervalle de rafraîchissement (sec)")
+    show_forecasts = models.BooleanField(default=True, verbose_name="Afficher les prévisions?")
+    show_anomalies = models.BooleanField(default=True, verbose_name="Afficher les anomalies?")
+    show_alerts = models.BooleanField(default=True, verbose_name="Afficher les alertes?")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Mis à jour le")
     
@@ -762,26 +668,4 @@ class AdvancedDashboard(models.Model):
         ]
     
     def __str__(self):
-        return f"Tableau de Bord - {self.user.username}"
-    
-    def get_kpis(self):
-        """Récupérer les KPIs configurés"""
-        import json
-        try:
-            return json.loads(self.kpi_list)
-        except:
-            return []
-    
-    def get_widgets(self):
-        """Récupérer les widgets configurés"""
-        import json
-        try:
-            return json.loads(self.widgets_config)
-        except:
-            return []
-    
-    def increment_views(self):
-        """Incrémenter le compteur de vues"""
-        self.total_views += 1
-        self.last_accessed = datetime.now()
-        self.save()
+        return f"Dashboard avancé - {self.user.username}"

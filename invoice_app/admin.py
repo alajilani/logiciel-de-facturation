@@ -18,11 +18,12 @@ class ClientAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ['name', 'reference', 'price', 'created_at']
+    list_display = ['name', 'reference', 'price', 'stock_quantity', 'low_stock_threshold', 'track_stock', 'created_at']
     list_filter = ['created_at']
     search_fields = ['name', 'reference']
     fieldsets = (
         ('Informations', {'fields': ('name', 'reference', 'price', 'description')}),
+        ('Stock', {'fields': ('stock_quantity', 'low_stock_threshold', 'track_stock')}),
     )
 
 @admin.register(CompanyInfo)
@@ -207,67 +208,77 @@ class AccountingSynchronizationAdmin(admin.ModelAdmin):
     )
 
 
-# TIER 4 - ADMIN CLASSES FOR NEW FEATURES
+# ============== TIER 4 - REAL-TIME NOTIFICATIONS & ADVANCED DASHBOARD ==============
 
 @admin.register(RealtimeNotification)
 class RealtimeNotificationAdmin(admin.ModelAdmin):
-    """Admin for Real-time Notifications"""
-    list_display = ['notification_type', 'title', 'priority', 'is_read', 'user', 'created_at']
+    list_display = ['user', 'notification_type', 'priority', 'is_read', 'created_at']
     list_filter = ['notification_type', 'priority', 'is_read', 'created_at']
-    search_fields = ['title', 'message', 'user__username']
+    search_fields = ['user__username', 'title', 'message']
     readonly_fields = ['created_at', 'read_at']
     
+    actions = ['mark_as_read', 'mark_as_unread', 'mark_as_dismissed']
+    
     fieldsets = (
-        ('Notification', {'fields': ('notification_type', 'priority', 'title', 'message')}),
-        ('Utilisateur', {'fields': ('user',)}),
-        ('Liens', {'fields': ('invoice', 'client', 'action_url')}),
+        ('Notification', {'fields': ('user', 'notification_type', 'title', 'message', 'priority')}),
+        ('Liens', {'fields': ('client', 'invoice', 'action_url')}),
         ('Statut', {'fields': ('is_read', 'read_at', 'is_dismissed')}),
         ('Expiration', {'fields': ('expires_at',)}),
         ('Historique', {'fields': ('created_at',), 'classes': ('collapse',)}),
     )
     
-    actions = ['mark_as_read', 'mark_as_unread']
-    
     def mark_as_read(self, request, queryset):
-        """Mark selected notifications as read"""
-        for notif in queryset:
-            notif.mark_as_read()
-        self.message_user(request, f"{queryset.count()} notifications marquées comme lues")
+        from django.utils import timezone
+        updated = queryset.update(is_read=True, read_at=timezone.now())
+        self.message_user(request, f"{updated} notification(s) marquée(s) comme lue(s)")
+    mark_as_read.short_description = "Marquer comme lue"
     
     def mark_as_unread(self, request, queryset):
-        """Mark selected notifications as unread"""
-        queryset.update(is_read=False, read_at=None)
-        self.message_user(request, f"{queryset.count()} notifications marquées comme non lues")
+        updated = queryset.update(is_read=False, read_at=None)
+        self.message_user(request, f"{updated} notification(s) marquée(s) comme non-lue(s)")
+    mark_as_unread.short_description = "Marquer comme non-lue"
     
-    mark_as_read.short_description = "Marquer comme lu"
-    mark_as_unread.short_description = "Marquer comme non lu"
+    def mark_as_dismissed(self, request, queryset):
+        updated = queryset.update(is_dismissed=True)
+        self.message_user(request, f"{updated} notification(s) rejetée(s)")
+    mark_as_dismissed.short_description = "Rejeter"
 
 
 @admin.register(AdvancedDashboard)
 class AdvancedDashboardAdmin(admin.ModelAdmin):
-    """Admin for Advanced Dashboard Configuration"""
-    list_display = ['user', 'title', 'is_enabled', 'default_period', 'auto_refresh', 'last_accessed', 'total_views']
-    list_filter = ['is_enabled', 'default_period', 'auto_refresh', 'created_at']
-    search_fields = ['user__username', 'title']
-    readonly_fields = ['created_at', 'updated_at', 'last_accessed', 'total_views']
+    list_display = ['user', 'is_enabled', 'default_period', 'color_scheme', 'auto_refresh', 'updated_at']
+    list_filter = ['is_enabled', 'default_period', 'color_scheme', 'auto_refresh']
+    search_fields = ['user__username']
+    readonly_fields = ['created_at', 'updated_at']
+    
+    actions = ['enable_dashboard', 'disable_dashboard', 'reset_to_default']
     
     fieldsets = (
-        ('Utilisateur & Général', {'fields': ('user', 'title', 'is_enabled')}),
-        ('Configuration des Widgets', {'fields': ('widgets_config', 'kpi_list')}),
-        ('Affichage', {'fields': ('default_period', 'color_scheme')}),
+        ('Configuration', {'fields': ('user', 'title', 'is_enabled')}),
+        ('Widgets & KPIs', {'fields': ('widgets_config', 'kpi_list')}),
+        ('Affichage', {'fields': ('default_period', 'color_scheme', 'show_forecasts', 'show_anomalies', 'show_alerts')}),
         ('Rafraîchissement', {'fields': ('auto_refresh', 'refresh_interval')}),
-        ('Notifications', {'fields': ('enable_notifications', 'notification_thresholds')}),
-        ('Statistiques', {'fields': ('total_views', 'last_accessed'), 'classes': ('collapse',)}),
         ('Historique', {'fields': ('created_at', 'updated_at'), 'classes': ('collapse',)}),
     )
     
-    actions = ['reset_dashboard']
+    def enable_dashboard(self, request, queryset):
+        updated = queryset.update(is_enabled=True)
+        self.message_user(request, f"{updated} dashboard(s) activé(s)")
+    enable_dashboard.short_description = "Activer"
     
-    def reset_dashboard(self, request, queryset):
-        """Reset dashboard to default configuration"""
-        for dashboard in queryset:
-            dashboard.total_views = 0
-            dashboard.save()
-        self.message_user(request, f"{queryset.count()} tableaux de bord réinitialisés")
+    def disable_dashboard(self, request, queryset):
+        updated = queryset.update(is_enabled=False)
+        self.message_user(request, f"{updated} dashboard(s) désactivé(s)")
+    disable_dashboard.short_description = "Désactiver"
     
-    reset_dashboard.short_description = "Réinitialiser la configuration"
+    def reset_to_default(self, request, queryset):
+        updated = queryset.update(
+            widgets_config='[]',
+            kpi_list='[]',
+            default_period='monthly',
+            color_scheme='auto',
+            auto_refresh=True,
+            refresh_interval=30
+        )
+        self.message_user(request, f"{updated} dashboard(s) réinitialisé(s) par défaut")
+    reset_to_default.short_description = "Réinitialiser par défaut"

@@ -1,4 +1,5 @@
 from django.urls import path
+from django.contrib.auth.views import LoginView, LogoutView
 from . import views
 from . import tier3_views
 
@@ -48,8 +49,8 @@ urlpatterns = [
     path('quotes/<int:pk>/export/pdf/', views.export_quote_pdf, name='export-quote-pdf'),
     path('quotes/<int:pk>/send-email/', views.send_quote_by_email, name='send-quote-email'),
     
-    # Email & Notifications
-    path('notifications/', views.NotificationListView.as_view(), name='notification-list'),
+    # Email & Notifications (Tier 1 - keeping for backward compatibility)
+    # path('notifications/', views.NotificationListView.as_view(), name='notification-list'),  # Replaced by Tier 4
     path('invoices/<int:pk>/send-email/', views.send_invoice_by_email, name='send-invoice-email'),
     path('invoices/<int:invoice_id>/send-reminder/', views.send_payment_reminder_view, name='send-reminder'),
     path('email-templates/', views.EmailTemplateListView.as_view(), name='email-template-list'),
@@ -87,4 +88,29 @@ urlpatterns = [
     
     # IA Dashboard
     path('ia-dashboard/', tier3_views.ia_dashboard, name='ia-dashboard'),
+
+    # AI Assistant
+    path('assistant/', views.ai_assistant_view, name='ai-assistant'),
+    path('api/assistant/chat/', views.api_ai_chat, name='api-ai-chat'),
+    
+    # ============================================================================
+    # TIER 4 - REAL-TIME NOTIFICATIONS & ADVANCED DASHBOARD
+    # ============================================================================
+    
+    # Real-time Notifications
+    path('notifications/', tier3_views.notification_list_realtime, name='notification-list'),
+    path('notifications/<int:pk>/mark-read/', tier3_views.mark_notification_read, name='mark-notification-read'),
+    path('notifications/<int:pk>/dismiss/', tier3_views.dismiss_notification, name='dismiss-notification'),
+    path('api/notifications/unread-count/', tier3_views.get_unread_notifications_count, name='api-unread-count'),
+    
+    # Advanced Dashboard
+    path('dashboard/advanced/', tier3_views.advanced_dashboard_view, name='advanced-dashboard'),
+    path('dashboard/settings/', tier3_views.dashboard_settings, name='dashboard-settings'),
+    path('api/dashboard/widgets/', tier3_views.get_dashboard_widgets, name='api-dashboard-widgets'),
+    
+    # ============================================================================
+    # AUTHENTICATION
+    # ============================================================================
+    path('accounts/login/', LoginView.as_view(template_name='registration/login.html'), name='login'),
+    path('accounts/logout/', LogoutView.as_view(next_page='login'), name='logout'),
 ]

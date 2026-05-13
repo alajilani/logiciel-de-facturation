@@ -1,0 +1,326 @@
+{% extends "base.html" %} {% load static %} {% block title %}Tableau de Bord
+Avancé - {% endblock %} {% block content %}
+<div class="dashboard-header mb-4">
+  <div class="d-flex justify-content-between align-items-center">
+    <div>
+      <h1 class="mb-2">📊 Tableau de Bord Avancé</h1>
+      <p class="text-muted">
+        Personnalisez votre vue avec les KPIs les plus importants
+      </p>
+    </div>
+    <a href="{% url 'dashboard-settings' %}" class="btn btn-primary">
+      <i class="fas fa-cog"></i> Paramètres
+    </a>
+  </div>
+</div>
+
+<!-- Notifications en attente -->
+{% if unread_notifications_count > 0 %}
+<div class="alert alert-info alert-dismissible fade show" role="alert">
+  <i class="fas fa-bell"></i> Vous avez
+  <strong>{{ unread_notifications_count }}</strong> notification(s) non lue(s)
+  <a href="{% url 'notification-list' %}" class="btn btn-sm btn-info ms-3"
+    >Voir les notifications</a
+  >
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<!-- KPI Cards -->
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="card kpi-card" style="border-left: 4px solid #06b6d4">
+      <div class="card-body">
+        <h6 class="card-title text-muted">
+          <i class="fas fa-users"></i> Total Clients
+        </h6>
+        <h2 class="card-text">{{ total_clients }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card kpi-card" style="border-left: 4px solid #8b5cf6">
+      <div class="card-body">
+        <h6 class="card-title text-muted">
+          <i class="fas fa-file-invoice"></i> Total Factures
+        </h6>
+        <h2 class="card-text">{{ total_invoices }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card kpi-card" style="border-left: 4px solid #ec4899">
+      <div class="card-body">
+        <h6 class="card-title text-muted">
+          <i class="fas fa-euro-sign"></i> Chiffre d'Affaires
+        </h6>
+        <h2 class="card-text">{{ total_revenue|floatformat:2 }}€</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card kpi-card" style="border-left: 4px solid #f97316">
+      <div class="card-body">
+        <h6 class="card-title text-muted">
+          <i class="fas fa-hourglass-half"></i> En Attente
+        </h6>
+        <h2 class="card-text">{{ pending_invoices }}</h2>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Widgets Row 1: Notifications & Alerts -->
+<div class="row mb-4">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header bg-light">
+        <h5 class="mb-0"><i class="fas fa-bell"></i> Notifications Récentes</h5>
+      </div>
+      <div class="card-body" style="max-height: 400px; overflow-y: auto">
+        {% if recent_notifications %}
+        <div class="list-group list-group-flush">
+          {% for notif in recent_notifications %}
+          <div
+            class="list-group-item list-group-item-action {% if notif.is_read %}opacity-50{% endif %}"
+            data-notif-id="{{ notif.id }}"
+          >
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <h6 class="mb-1">{{ notif.title }}</h6>
+                <small class="text-muted"
+                  >{{ notif.message|truncatewords:15 }}</small
+                >
+              </div>
+              <span class="badge bg-secondary">
+                {{ notif.get_priority_display }}
+              </span>
+            </div>
+            <small class="text-muted d-block mt-1">
+              <i class="fas fa-clock"></i> {{ notif.created_at|timesince }} ago
+            </small>
+            <div class="mt-2 d-flex gap-2">
+              {% if not notif.is_read %}
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-success"
+                onclick="markDashboardNotificationRead({{ notif.id }})"
+              >
+                Marquer comme lue
+              </button>
+              {% endif %} {% if notif.action_url %}
+              <a
+                href="{{ notif.action_url }}"
+                class="btn btn-sm btn-outline-primary"
+              >
+                Voir détail
+              </a>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-4">
+          <i class="fas fa-check-circle"></i> Aucune notification
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">
+          <i class="fas fa-exclamation-triangle"></i> Alertes Intelligentes
+          (Tier 3)
+        </h5>
+      </div>
+      <div class="card-body" style="max-height: 400px; overflow-y: auto">
+        {% if intelligent_alerts %}
+        <div class="list-group list-group-flush">
+          {% for alert in intelligent_alerts %}
+          <a
+            href="{% url 'alert-detail' alert.id %}"
+            class="list-group-item list-group-item-action"
+          >
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <h6 class="mb-1">{{ alert.title }}</h6>
+                <small class="text-muted"
+                  >{{ alert.description|truncatewords:15 }}</small
+                >
+              </div>
+              <span class="badge bg-{{ alert.priority|lower }}">
+                {{ alert.get_priority_display }}
+              </span>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-4">
+          <i class="fas fa-check-circle"></i> Aucune alerte
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Widgets Row 2: Anomalies & Forecasts -->
+<div class="row">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">
+          <i class="fas fa-search"></i> Anomalies Détectées (Tier 3)
+        </h5>
+      </div>
+      <div class="card-body" style="max-height: 400px; overflow-y: auto">
+        {% if recent_anomalies %}
+        <div class="list-group list-group-flush">
+          {% for anomaly in recent_anomalies %}
+          <a
+            href="{% url 'anomaly-detail' anomaly.id %}"
+            class="list-group-item list-group-item-action"
+          >
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <h6 class="mb-1">{{ anomaly.anomaly_type }}</h6>
+                <small class="text-muted"
+                  >{{ anomaly.description|truncatewords:10 }}</small
+                >
+              </div>
+              {% if anomaly.severity %}
+              <span class="badge bg-warning">{{ anomaly.severity }}</span>
+              {% endif %}
+            </div>
+            <small class="text-muted d-block mt-1">
+              Détecté: {{ anomaly.detected_at|date:"d/m/Y H:i" }}
+            </small>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-4">
+          <i class="fas fa-check-circle"></i> Aucune anomalie
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">
+          <i class="fas fa-chart-line"></i> Prévisions Récentes (Tier 3)
+        </h5>
+      </div>
+      <div class="card-body">
+        {% if latest_forecast %}
+        <div class="forecast-widget">
+          <h6 class="mb-3">{{ latest_forecast.period }}</h6>
+          <div class="row">
+            <div class="col-6">
+              <p class="text-muted small">Revenu Prévu</p>
+              <h5 style="color: #06b6d4">
+                {{ latest_forecast.predicted_revenue|floatformat:2 }}€
+              </h5>
+            </div>
+            <div class="col-6">
+              <p class="text-muted small">Confiance</p>
+              <h5 style="color: #8b5cf6">
+                {{ latest_forecast.confidence_score }}%
+              </h5>
+            </div>
+          </div>
+          <div class="mt-3">
+            <small class="text-muted">
+              Créé: {{ latest_forecast.created_at|date:"d/m/Y" }}
+            </small>
+          </div>
+          <a
+            href="{% url 'forecast-dashboard' %}"
+            class="btn btn-sm btn-outline-primary mt-3"
+          >
+            Voir les prévisions
+          </a>
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-4">
+          <i class="fas fa-chart-line"></i> Aucune prévision créée
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .kpi-card {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+  }
+  .kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  .list-group-item {
+    border-left: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .list-group-item:hover {
+    border-left-color: #06b6d4;
+    background-color: rgba(6, 182, 212, 0.05);
+  }
+</style>
+
+<script>
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === name + "=") {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  function markDashboardNotificationRead(notificationId) {
+    fetch(`/notifications/${notificationId}/mark-read/`, {
+      method: "POST",
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        "X-CSRFToken": getCookie("csrftoken"),
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.status === "success") {
+          const card = document.querySelector(
+            `[data-notif-id="${notificationId}"]`,
+          );
+          if (card) {
+            card.classList.add("opacity-50");
+            const button = card.querySelector(
+              'button[onclick^="markDashboardNotificationRead"]',
+            );
+            if (button) {
+              button.remove();
+            }
+          }
+        }
+      })
+      .catch((error) => console.error("Erreur notification dashboard:", error));
+  }
+</script>
+{% endblock %}
