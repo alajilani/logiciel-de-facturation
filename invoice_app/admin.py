@@ -1,9 +1,33 @@
+import csv
+
 from django.contrib import admin
+from django.http import HttpResponse
 from .models import (
     Client, Product, CompanyInfo, Invoice, InvoiceItem, Payment, Quote, QuoteItem, 
     Notification, EmailTemplate, AuditLog, AnomalyDetection, RevenueForecast, 
     IntelligentAlert, AccountingSynchronization, RealtimeNotification, AdvancedDashboard
 )
+
+
+def export_as_csv(modeladmin, request, queryset):
+    """Export the selected records as CSV."""
+    meta = modeladmin.model._meta
+    field_names = [field.name for field in meta.fields]
+
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename={meta.model_name}.csv'
+    response.write('\ufeff')
+
+    writer = csv.writer(response)
+    writer.writerow(field_names)
+
+    for obj in queryset.select_related():
+        writer.writerow([getattr(obj, field) for field in field_names])
+
+    return response
+
+
+export_as_csv.short_description = "Exporter en CSV"
 
 @admin.register(Client)
 class ClientAdmin(admin.ModelAdmin):
@@ -51,6 +75,9 @@ class InvoiceAdmin(admin.ModelAdmin):
     search_fields = ['invoice_number', 'client__name']
     readonly_fields = ['invoice_number', 'subtotal', 'total_discount', 'tva_amount', 'total', 'created_at', 'updated_at']
     inlines = [InvoiceItemInline]
+    raw_id_fields = ('client', 'original_invoice')
+    list_select_related = ('client', 'original_invoice')
+    actions = [export_as_csv]
     fieldsets = (
         ('Informations de base', {'fields': ('invoice_number', 'client', 'date', 'due_date', 'payment_method')}),
         ('Détails', {'fields': ('subtotal', ('remise_percentage', 'remise_amount'), 
