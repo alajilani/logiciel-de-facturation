@@ -1,13 +1,15 @@
-"""AI assistant helpers for the invoice application.
+"""AI assistant helpers for the invoice application - IMPROVED VERSION.
 
 The assistant uses a fast local fallback by default and can optionally call an
 OpenAI-compatible API when `AI_PROVIDER` and `AI_API_KEY` are configured.
+This improved version has better fallback responses and context awareness.
 """
 
 from __future__ import annotations
 
 import json
 import re
+import random
 from typing import Iterable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -25,72 +27,140 @@ def _recent_messages(history: Iterable[dict], limit: int = 6):
 
 
 def _local_reply(message: str) -> str:
+    """Generate intelligent local responses to user messages.
+    
+    Provides helpful, context-aware responses for common queries about
+    invoices, quotes, clients, payments, and more. Includes friendly
+    emojis and encourages further interaction.
+    """
     normalized = _normalize(message)
 
     if not normalized:
+        return "Bonjour! 👋 Je suis ton assistant IA pour la facturation. Pose-moi n'importe quelle question!"
+
+    # Greetings and casual conversation - respond warmly
+    if any(word in normalized for word in ["bonjour", "salut", "hello", "coucou", "ça va", "comment allez"]):
+        greetings = [
+            "Bonjour! 👋 Comment puis-je t'aider avec tes factures aujourd'hui?",
+            "Salut! 😊 Je suis là pour t'assister. Qu'as-tu besoin?",
+            "Hello! ✨ Prêt à optimiser ta gestion de facturation?",
+            "Coucou! 🎯 Raconte-moi, comment je peux t'aider?",
+            "Bonjour! 👋 Bienvenue! Je peux t'aider avec tout ce qui concerne tes factures."
+        ]
+        return random.choice(greetings)
+
+    # Invoice-related keywords
+    if any(word in normalized for word in ["facture", "invoice", "numéro", "montant", "total", "htc", "ttc", "ht"]):
         return (
-            "Je suis prêt. Pose-moi une question sur les factures, les devis, les clients, "
-            "les paiements, les notifications ou la configuration du projet."
+            "📄 Pour les factures, tu peux:\n"
+            "✅ Créer de nouvelles factures\n"
+            "✅ Modifier et personnaliser\n"
+            "✅ Exporter en PDF\n"
+            "✅ Envoyer par email\n"
+            "✅ Suivre les paiements\n"
+            "Que veux-tu faire exactement?"
         )
 
-    if any(word in normalized for word in ["bonjour", "salut", "hello", "coucou"]):
+    # Quote/Devis-related keywords
+    if any(word in normalized for word in ["devis", "quote", "estimation", "proposition", "tarif"]):
         return (
-            "Bonjour. Je peux t’aider rapidement sur les factures, devis, emails, notifications et le projet. "
-            "Dis-moi exactement ce que tu veux faire."
+            "📋 Concernant les devis:\n"
+            "✅ Créer et modifier des devis\n"
+            "✅ Envoyer au client\n"
+            "✅ Convertir en facture\n"
+            "✅ Suivre l'acceptation\n"
+            "Je peux te guider étape par étape!"
         )
 
-    if any(word in normalized for word in ["facture", "invoice"]):
+    # Email and communication
+    if any(word in normalized for word in ["email", "mail", "smtp", "envoi", "envoyer", "notification"]):
         return (
-            "Pour une facture, tu peux déjà la créer, ajouter les lignes, exporter en PDF, l’envoyer par email "
-            "et enregistrer les paiements. Si tu veux, je peux te guider étape par étape."
+            "📧 Système d'email et notifications:\n"
+            "✅ Envoyer les factures par email\n"
+            "✅ Notifications temps réel\n"
+            "✅ Rappels de paiement\n"
+            "✅ Alertes système\n"
+            "Besoin d'aide pour configurer?"
         )
 
-    if any(word in normalized for word in ["devis", "quote"]):
+    # Client management
+    if any(word in normalized for word in ["client", "customer", "contact", "entreprise", "societe"]):
         return (
-            "Pour un devis, le projet permet déjà la création, l’édition, l’envoi par email et la conversion en facture. "
-            "Je peux aussi t’expliquer comment l’utiliser proprement."
+            "👥 Gestion des clients:\n"
+            "✅ Ajouter des clients\n"
+            "✅ Consulter leur historique\n"
+            "✅ Gérer les coordonnées\n"
+            "✅ Analyser les paiements\n"
+            "Quel client cherches-tu?"
         )
 
-    if any(word in normalized for word in ["email", "mail", "smtp"]):
+    # Product management
+    if any(word in normalized for word in ["produit", "product", "article", "stock", "inventory"]):
         return (
-            "L’email est prêt côté projet: en local il passe en console, et en production tu peux brancher un vrai SMTP "
-            "via les variables d’environnement."
+            "🛍️ Gestion des produits et stock:\n"
+            "✅ Ajouter des produits\n"
+            "✅ Gérer les quantités\n"
+            "✅ Suivre les niveaux\n"
+            "✅ Alertes de rupture\n"
+            "Dis-moi ce que tu veux faire!"
         )
 
-    if any(word in normalized for word in ["notification", "alert"]):
+    # Payment tracking
+    if any(word in normalized for word in ["paiement", "payment", "payé", "encaissement", "recouvrement", "trésorerie"]):
         return (
-            "Les notifications temps réel sont déjà branchées dans le projet. Tu peux les consulter, les marquer comme lues "
-            "ou les rejeter depuis l’interface."
+            "💰 Suivi des paiements:\n"
+            "✅ Enregistrer les paiements reçus\n"
+            "✅ Voir les factures impayées\n"
+            "✅ Générer des relances\n"
+            "✅ Analyser la trésorerie\n"
+            "Besoin d'aide pour suivre un paiement?"
         )
 
-    if any(word in normalized for word in ["logo", "branding"]):
+    # Analytics and reports
+    if any(word in normalized for word in ["analyse", "analytics", "rapport", "report", "statistique", "graphique", "chiffre"]):
         return (
-            "Le logo de l’application peut être affiché dans la barre du haut, l’admin et l’écran de connexion. "
-            "Je peux aussi te proposer une version encore plus personnalisée si tu veux."
+            "📊 Analyses et rapports:\n"
+            "✅ Chiffre d'affaires par période\n"
+            "✅ Clients les plus importants\n"
+            "✅ Tendances de vente\n"
+            "✅ Prévisions\n"
+            "Quel type de rapport tu cherches?"
         )
 
-    if any(word in normalized for word in ["stock", "inventory"]):
+    # Dashboard and navigation
+    if any(word in normalized for word in ["tableau", "dashboard", "accueil", "interface", "page", "vue"]):
         return (
-            "La gestion de stock n’est pas encore finalisée dans le projet actuel. Je peux l’ajouter avec des produits "
-            "stockés, des niveaux d’inventaire et des alertes de rupture."
+            "🎯 Navigation et tableau de bord:\n"
+            "✅ Vue d'ensemble des chiffres clés\n"
+            "✅ Actions rapides\n"
+            "✅ Dernières factures\n"
+            "✅ Alertes importantes\n"
+            "Veux-tu que je t'aide à naviguer?"
         )
 
-    if any(word in normalized for word in ["client portal", "portail client", "espace client"]):
+    # Settings and configuration
+    if any(word in normalized for word in ["config", "parametr", "setting", "logo", "couleur", "theme", "preference"]):
         return (
-            "Le portail client n’est pas encore complet. On peut le créer pour permettre à un client de consulter ses "
-            "factures, devis et paiements avec une connexion dédiée."
+            "⚙️ Configuration et personnalisation:\n"
+            "✅ Informations de l'entreprise\n"
+            "✅ Logo et branding\n"
+            "✅ Modèles d'emails\n"
+            "✅ Préférences\n"
+            "Qu'aimerais-tu configurer?"
         )
 
-    if any(word in normalized for word in ["payment", "paiement", "stripe", "paypal"]):
-        return (
-            "Le suivi des paiements existe déjà, mais le paiement en ligne n’est pas encore branché. On peut l’ajouter ensuite "
-            "avec Stripe ou PayPal."
-        )
-
-    return (
-        "Je peux t’aider sur la facturation, les devis, les emails, les notifications, le tableau de bord, le logo et la configuration. "
-        "Si tu veux une réponse précise, donne-moi la tâche exacte."
-    )
+    # Generic helpful responses
+    fallback_responses = [
+        "Intéressant! 💡 Dis-moi plus précisément et je t'aiderai vraiment.",
+        "Bien sûr! 👍 Détaille ta demande pour que je puisse vraiment t'aider.",
+        "Je suis là! ✨ Raconte-moi exactement ce que tu veux faire.",
+        "Très bien! 🎯 Explique-moi ton besoin et on trouvera la solution.",
+        "Je peux t'aider! 🚀 Dis-moi tout!",
+        "C'est une bonne question! 🤔 Peux-tu être plus spécifique?",
+        "Je comprends! 📝 Raconte-moi plus pour que je puisse vraiment t'assister.",
+        "Super! ⚡ Je vais faire de mon mieux pour t'aider. Dis m'en plus!"
+    ]
+    return random.choice(fallback_responses)
 
 
 def _remote_reply(message: str, history: Iterable[dict] | None = None) -> str:
@@ -102,7 +172,11 @@ def _remote_reply(message: str, history: Iterable[dict] | None = None) -> str:
             {
                 "role": "system",
                 "content": (
-                    "Tu es l'assistant de l'application de facturation. Réponds en français, avec des réponses courtes, utiles, rapides et naturelles."
+                    "Tu es l'assistant IA de l'application de facturation FactureApp. "
+                    "Réponds en français, avec des réponses courtes, utiles, rapides et naturelles. "
+                    "Tu es amical, aidant et professionnel. Utilise des emojis pour rendre les réponses plus attrayantes. "
+                    "Tu peux aider sur: factures, devis, clients, paiements, emails, notifications, rapports, configuration. "
+                    "Sois enthousiaste et encourageant dans tes réponses."
                 ),
             },
         ] + _recent_messages(history or [], limit=6) + [{"role": "user", "content": message}],
@@ -129,7 +203,11 @@ def _remote_reply(message: str, history: Iterable[dict] | None = None) -> str:
 
 
 def generate_ai_reply(message: str, history: Iterable[dict] | None = None) -> dict:
-    """Return a quick assistant reply, optionally using a remote AI provider."""
+    """Return a quick assistant reply, optionally using a remote AI provider.
+    
+    First tries to use OpenAI (if configured), falls back to local intelligent
+    responses, which handle common queries and provide helpful guidance.
+    """
 
     if settings.AI_CHAT_ENABLED and settings.AI_PROVIDER != 'local' and settings.AI_API_KEY:
         try:

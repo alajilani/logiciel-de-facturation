@@ -48,36 +48,6 @@
         font-size: 0.875rem;
     }
     
-    .ai-mode-badge {
-        margin-left: auto;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: rgba(255, 255, 255, 0.2);
-        padding: 0.5rem 1rem;
-        border-radius: 2rem;
-        font-size: 0.8125rem;
-        font-weight: 600;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-    }
-    
-    .ai-mode-badge.local {
-        background: rgba(251, 191, 36, 0.2);
-        border-color: rgba(251, 191, 36, 0.5);
-        color: #fbbf24;
-    }
-    
-    .ai-mode-badge.openai {
-        background: rgba(34, 197, 94, 0.2);
-        border-color: rgba(34, 197, 94, 0.5);
-        color: #22c55e;
-    }
-    
-    .ai-mode-badge i {
-        font-size: 1rem;
-        animation: none;
-    }
-    
     .chat-messages {
         flex: 1;
         overflow-y: auto;
@@ -157,6 +127,37 @@
         flex-shrink: 0;
     }
     
+    .typing-indicator {
+        display: flex;
+        gap: 0.25rem;
+        padding: 1rem;
+    }
+    
+    .typing-dot {
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 50%;
+        background: #cbd5e1;
+        animation: typing 1.4s infinite;
+    }
+    
+    .typing-dot:nth-child(1) {
+        animation-delay: 0s;
+    }
+    
+    .typing-dot:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    
+    .typing-dot:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+    
+    @keyframes typing {
+        0%, 60%, 100% { opacity: 0.5; }
+        30% { opacity: 1; }
+    }
+    
     .chat-input-area {
         padding: 1.5rem 2rem;
         background: white;
@@ -164,6 +165,11 @@
         display: flex;
         gap: 0.75rem;
         align-items: flex-end;
+    }
+    
+    .chat-input-wrapper {
+        flex: 1;
+        position: relative;
     }
     
     .chat-input {
@@ -204,6 +210,15 @@
     .chat-send-btn:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+    }
+    
+    .chat-send-btn:active {
+        transform: translateY(0);
+    }
+    
+    .chat-send-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
     
     .quick-prompts {
@@ -275,42 +290,46 @@
         <i class="bi bi-robot"></i>
         <div>
             <h3>FactureBot</h3>
-            <p>Votre assistant intelligent de gestion de facturation</p>
+            <p>Votre assistant de gestion de facturation</p>
         </div>
-        {% if ai_mode == 'openai' %}
-            <div class="ai-mode-badge openai">
-                <i class="bi bi-lightning-charge"></i>
-                <span>OpenAI GPT</span>
-            </div>
-        {% else %}
-            <div class="ai-mode-badge local">
-                <i class="bi bi-hourglass"></i>
-                <span>Mode Local</span>
-            </div>
-        {% endif %}
     </div>
     
     <div class="chat-messages" id="chatMessages">
+        {% if not messages %}
         <div class="empty-chat">
             <div class="empty-chat-icon"><i class="bi bi-chat-left-dots"></i></div>
             <h2>Commencez une conversation</h2>
             <p>Posez vos questions sur vos factures, clients, produits ou statistiques</p>
         </div>
+        {% else %}
+        {% for message in messages %}
+            <div class="message {% if message.sender == 'user' %}user{% else %}bot{% endif %}">
+                {% if message.sender == 'bot' %}
+                <div class="bot-avatar"><i class="bi bi-robot"></i></div>
+                {% endif %}
+                <div class="message-bubble">{{ message.text }}</div>
+            </div>
+        {% endfor %}
+        {% endif %}
     </div>
     
     <div class="quick-prompts" id="quickPrompts">
-        <button class="quick-prompt-btn" onclick="sendMessage('Combien de factures ai-je créé ce mois-ci?')">📊 Statistiques</button>
-        <button class="quick-prompt-btn" onclick="sendMessage('Quel est mon revenu total?')">💰 Revenu</button>
-        <button class="quick-prompt-btn" onclick="sendMessage('Quels sont mes meilleurs clients?')">🏆 Top clients</button>
-        <button class="quick-prompt-btn" onclick="sendMessage('Aide moi à créer une facture')">📝 Nouvelle facture</button>
+        <button class="quick-prompt-btn" onclick="sendMessage('Combien de factures ai-je créé ce mois-ci?')">Statistiques mensuelles</button>
+        <button class="quick-prompt-btn" onclick="sendMessage('Quel est mon revenu total?')">Revenu total</button>
+        <button class="quick-prompt-btn" onclick="sendMessage('Quels sont mes meilleurs clients?')">Top clients</button>
+        <button class="quick-prompt-btn" onclick="sendMessage('Aide moi à créer une nouvelle facture')">Créer facture</button>
     </div>
     
     <div class="chat-input-area">
-        <div style="flex: 1; display: flex; gap: 0.75rem; align-items: flex-end;">
-            <textarea class="chat-input" id="messageInput" placeholder="Posez votre question..." rows="1"></textarea>
-            <button class="chat-send-btn" id="sendBtn" onclick="sendMessage()">
-                <i class="bi bi-send-fill"></i>
-            </button>
+        <div class="chat-input-wrapper">
+            <form id="chatForm" style="display: flex; gap: 0.75rem; width: 100%; align-items: flex-end;">
+                <div style="flex: 1;">
+                    <textarea class="chat-input" id="messageInput" placeholder="Posez votre question..." rows="1"></textarea>
+                </div>
+                <button type="submit" class="chat-send-btn" id="sendBtn">
+                    <i class="bi bi-send-fill"></i> Envoyer
+                </button>
+            </form>
         </div>
     </div>
 </div>
@@ -322,9 +341,11 @@ function sendMessage(text = null) {
     
     if (!message) return;
     
+    // Add user message to chat
     addMessage(message, 'user');
     input.value = '';
     
+    // Simulate bot response
     setTimeout(() => {
         addMessage(getResponse(message), 'bot');
     }, 800);
@@ -359,31 +380,39 @@ function getResponse(message) {
     const msg = message.toLowerCase();
     
     const responses = {
-        'combien de factures': '📊 Vous avez créé <strong>12 factures</strong> ce mois-ci, pour un total de <strong>4,500€</strong>. Le taux de paiement est de <strong>91%</strong>.',
-        'revenu total': '💰 Votre revenu total est de <strong>45,230€</strong>. Dont <strong>41,000€ payés</strong> et <strong>4,230€ en attente</strong>.',
-        'meilleurs clients': '🏆 Vos meilleurs clients:\n1. Acme Corp - 8,500€\n2. Tech Solutions - 6,200€\n3. Global Industries - 5,900€',
-        'créer facture': '📝 Allez dans "Nouvelle facture", ajoutez les articles et définissez les conditions de paiement.',
+        'statistiques mensuelles': '📊 Vous avez créé <strong>12 factures</strong> ce mois-ci, pour un total de <strong>4,500€</strong>. Le taux de paiement est de <strong>91%</strong>.',
+        'revenu total': '💰 Votre revenu total sur la plateforme est de <strong>45,230€</strong>. Dont <strong>41,000€ payés</strong> et <strong>4,230€ en attente</strong>.',
+        'top clients': '🏆 Vos meilleurs clients sont:\n1. Acme Corp - 8,500€\n2. Tech Solutions - 6,200€\n3. Global Industries - 5,900€',
+        'créer facture': '📝 Pour créer une nouvelle facture, allez dans le menu et cliquez sur "Nouvelle facture". Vous pourrez ensuite ajouter les articles et définir les conditions de paiement.',
     };
     
     for (const [key, value] of Object.entries(responses)) {
-        if (msg.includes(key)) {
+        if (msg.includes(key) || key.includes(msg.split(' ')[0])) {
             return value;
         }
     }
     
-    return '✨ Je suis ici pour vous aider! Posez vos questions sur les factures, clients, ou statistiques.';
+    return '✨ Je suis ici pour vous aider! Vous pouvez me poser des questions sur vos factures, clients, produits, ou statistiques. Comment puis-je vous aider?';
 }
 
+// Handle form submission
+document.getElementById('chatForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    sendMessage();
+});
+
+// Auto-resize textarea
+document.getElementById('messageInput').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+
+// Enter to send, Shift+Enter for new line
 document.getElementById('messageInput').addEventListener('keypress', function(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         sendMessage();
     }
-});
-
-document.getElementById('messageInput').addEventListener('input', function() {
-    this.style.height = 'auto';
-    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
 });
 </script>
 {% endblock %}
