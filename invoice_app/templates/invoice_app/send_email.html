@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Envoyer par email{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="mb-0">{% if document_type == 'facture' %}
+                    Envoyer la facture par email
+                {% else %}
+                    Envoyer le devis par email
+                {% endif %}
+            </h1>
+            <p class="text-muted mt-1">
+                {% if invoice %}
+                    {{ invoice.invoice_number }} — {{ invoice.client.nom }}
+                {% elif quote %}
+                    {{ quote.quote_number }} — {{ quote.client.nom }}
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-7">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Composition de l'email</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Destinataire *</label>
+                            {{ form.recipient_email }}
+                            {% if form.recipient_email.errors %}
+                                <div class="text-danger small mt-1">{{ form.recipient_email.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Message personnalisé <span class="text-muted">(optionnel)</span></label>
+                            {{ form.custom_message }}
+                            <div class="form-text">Ce message sera inséré dans le corps de l'email.</div>
+                        </div>
+
+                        {% if form.attach_pdf %}
+                        <div class="mb-4">
+                            <div class="form-check">
+                                {{ form.attach_pdf }}
+                                <label class="form-check-label" for="{{ form.attach_pdf.id_for_label }}">
+                                    Joindre le PDF
+                                </label>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            {% if invoice %}
+                                <a href="{% url 'invoice-detail' invoice.id %}" class="btn btn-secondary">
+                                    <i class="bi bi-arrow-left"></i> Annuler
+                                </a>
+                            {% elif quote %}
+                                <a href="{% url 'quote-detail' quote.id %}" class="btn btn-secondary">
+                                    <i class="bi bi-arrow-left"></i> Annuler
+                                </a>
+                            {% endif %}
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-send"></i> Envoyer l'email
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Récapitulatif du document -->
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">{% if document_type == 'facture' %}Récapitulatif facture{% else %}Récapitulatif devis{% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if invoice %}
+                        <table class="table table-sm mb-0">
+                            <tr>
+                                <td class="text-muted">Numéro</td>
+                                <td class="fw-semibold">{{ invoice.invoice_number }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Client</td>
+                                <td>{{ invoice.client.nom }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Email client</td>
+                                <td>
+                                    {% if invoice.client.email %}
+                                        <span class="text-success"><i class="bi bi-check-circle"></i> {{ invoice.client.email }}</span>
+                                    {% else %}
+                                        <span class="text-danger"><i class="bi bi-x-circle"></i> Aucun email</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Montant TTC</td>
+                                <td class="fw-semibold">{{ invoice.total_ttc|floatformat:2 }} €</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Échéance</td>
+                                <td>{{ invoice.due_date|date:"d/m/Y" }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Statut</td>
+                                <td>
+                                    <span class="badge bg-{% if invoice.statut == 'PAYEE' %}success{% elif invoice.statut == 'EN_RETARD' %}danger{% elif invoice.statut == 'ANNULEE' %}secondary{% else %}warning text-dark{% endif %}">
+                                        {{ invoice.get_statut_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </table>
+                    {% elif quote %}
+                        <table class="table table-sm mb-0">
+                            <tr>
+                                <td class="text-muted">Numéro</td>
+                                <td class="fw-semibold">{{ quote.quote_number }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Client</td>
+                                <td>{{ quote.client.nom }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Email client</td>
+                                <td>
+                                    {% if quote.client.email %}
+                                        <span class="text-success"><i class="bi bi-check-circle"></i> {{ quote.client.email }}</span>
+                                    {% else %}
+                                        <span class="text-danger"><i class="bi bi-x-circle"></i> Aucun email</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Montant</td>
+                                <td class="fw-semibold">{{ quote.total|floatformat:2 }} €</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Validité</td>
+                                <td>{{ quote.validity_date|date:"d/m/Y" }}</td>
+                            </tr>
+                        </table>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

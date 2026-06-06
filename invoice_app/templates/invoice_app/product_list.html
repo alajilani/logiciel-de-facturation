@@ -1,13 +1,14 @@
-{% extends "base.html" %} {% block title %}Produits - Application de
-Facturation{% endblock %} {% block content %}
+{% extends "base.html" %}
+{% block title %}Produits & Services{% endblock %}
+{% block content %}
 <div class="container-fluid">
-  <div class="row mb-4">
+  <div class="row mb-4 align-items-center">
     <div class="col-md-8">
-      <h1><i class="bi bi-box"></i> Produits</h1>
+      <h1>Produits &amp; Services</h1>
     </div>
     <div class="col-md-4 text-end">
       <a href="{% url 'product-create' %}" class="btn btn-primary">
-        <i class="bi bi-box-seam"></i> Ajouter un produit
+        <i class="bi bi-plus-circle"></i> Ajouter
       </a>
     </div>
   </div>
@@ -15,12 +16,18 @@ Facturation{% endblock %} {% block content %}
   <div class="card">
     <div class="table-responsive">
       <table class="table table-hover mb-0">
-        <thead>
+        <thead class="table-light">
           <tr>
             <th>Nom</th>
-            <th>Référence</th>
-            <th>Prix</th>
+            <th>Réf.</th>
+            <th>Type</th>
+            <th>Catégorie</th>
+            <th>Prix U. HT</th>
+            <th>Prix U. TTC</th>
+            <th>TVA</th>
             <th>Stock</th>
+            <th>Disponible</th>
+            <th>Statut</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -28,45 +35,54 @@ Facturation{% endblock %} {% block content %}
           {% for product in products %}
           <tr>
             <td><strong>{{ product.name }}</strong></td>
-            <td><code>{{ product.reference }}</code></td>
-            <td>{{ product.price|floatformat:2 }}€</td>
+            <td><code>{{ product.reference|default:"—" }}</code></td>
             <td>
-              {% if product.track_stock %}
-              <span
-                class="badge {% if product.is_low_stock %}bg-warning{% else %}bg-success{% endif %}"
-              >
-                {{ product.stock_quantity }}
-              </span>
+              {% if product.type_item == 'SERVICE' %}
+                <span class="b-pill b-pill-service"><i class="bi bi-gear-fill"></i>{{ product.get_type_item_display }}</span>
               {% else %}
-              <span class="badge bg-secondary">N/A</span>
+                <span class="b-pill b-pill-produit"><i class="bi bi-box-seam-fill"></i>{{ product.get_type_item_display }}</span>
+              {% endif %}
+            </td>
+            <td>{{ product.categorie.nom|default:"—" }}</td>
+            <td>{{ product.prix_unitaire_ht|floatformat:2 }}€</td>
+            <td>{{ product.prix_unitaire_ttc|floatformat:2 }}€</td>
+            <td>{{ product.taux_tva }}%</td>
+            <td>
+              {% if product.type_item == 'PRODUIT' and product.suivre_stock %}
+                {% if product.is_stock_faible %}
+                  <span class="b-pill b-pill-stock-low"><i class="bi bi-exclamation-triangle-fill"></i>{{ product.stock }} {{ product.get_unite_display|lower }}</span>
+                {% else %}
+                  <span class="b-pill b-pill-stock-ok">{{ product.stock }} {{ product.get_unite_display|lower }}</span>
+                {% endif %}
+              {% else %}
+                <span class="b-pill b-pill-muted">—</span>
               {% endif %}
             </td>
             <td>
-              <div class="btn-group" role="group">
-                <a
-                  href="{% url 'product-detail' product.id %}"
-                  class="btn btn-sm btn-info"
-                >
-                  <i class="bi bi-eye"></i>
-                </a>
-                <a
-                  href="{% url 'product-update' product.id %}"
-                  class="btn btn-sm btn-warning"
-                >
-                  <i class="bi bi-pencil"></i>
-                </a>
-                <a
-                  href="{% url 'product-delete' product.id %}"
-                  class="btn btn-sm btn-outline-danger"
-                >
-                  <i class="bi bi-trash"></i>
-                </a>
+              {% if product.disponible_vente %}
+                <span class="b-pill b-pill-yes"><span class="b-dot"></span>Oui</span>
+              {% else %}
+                <span class="b-pill b-pill-no"><span class="b-dot"></span>Non</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if product.statut == 'ACTIF' %}
+                <span class="b-pill b-pill-active"><span class="b-dot"></span>{{ product.get_statut_display }}</span>
+              {% else %}
+                <span class="b-pill b-pill-inactive-soft"><span class="b-dot"></span>{{ product.get_statut_display }}</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="btn-action-group">
+                <a href="{% url 'product-detail' product.id %}" class="btn-icon btn-icon-view" title="Voir"><i class="bi bi-eye"></i></a>
+                <a href="{% url 'product-update' product.id %}" class="btn-icon btn-icon-edit" title="Modifier"><i class="bi bi-pencil"></i></a>
+                <a href="{% url 'product-delete' product.id %}" class="btn-icon btn-icon-delete" title="Supprimer"><i class="bi bi-trash"></i></a>
               </div>
             </td>
           </tr>
           {% empty %}
           <tr>
-            <td colspan="5" class="text-center text-muted">Aucun produit</td>
+            <td colspan="11" class="text-center text-muted py-4">Aucun produit ou service</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -75,3 +91,4 @@ Facturation{% endblock %} {% block content %}
   </div>
 </div>
 {% endblock %}
+

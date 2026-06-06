@@ -1,0 +1,451 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block bodyclass %}dashboard{% endblock %}
+{% block content_title_topbar %}Centre système{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .sys-status-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+    .sys-status {
+        background: #fff;
+        border: 1px solid var(--ab-border);
+        border-radius: var(--ab-radius);
+        box-shadow: var(--ab-shadow-sm);
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+    .sys-status-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: var(--ab-radius);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+    .sys-status-icon.ok      { background: var(--ab-success-soft); color: var(--ab-success); }
+    .sys-status-icon.warn    { background: var(--ab-warning-soft); color: #B45309; }
+    .sys-status-icon.err     { background: var(--ab-danger-soft);  color: var(--ab-danger); }
+    .sys-status-icon.neutral { background: var(--ab-primary-soft); color: var(--ab-primary); }
+    .sys-status-body { flex: 1; min-width: 0; }
+    .sys-status-label {
+        font-size: 12px;
+        color: var(--ab-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        font-weight: 600;
+    }
+    .sys-status-value {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--ab-text);
+        margin-top: 2px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .sys-status-sub {
+        font-size: 12px;
+        color: var(--ab-text-muted);
+        margin-top: 2px;
+    }
+    .sys-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 12px;
+    }
+    .sys-action {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 14px;
+        background: #fff;
+        border: 1px solid var(--ab-border);
+        border-radius: var(--ab-radius);
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .sys-action:hover { border-color: var(--ab-primary); box-shadow: var(--ab-shadow-sm); }
+    .sys-action-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        color: var(--ab-text);
+        font-size: 14px;
+    }
+    .sys-action-title i { color: var(--ab-primary); font-size: 16px; }
+    .sys-action-desc {
+        color: var(--ab-text-muted);
+        font-size: 12px;
+        line-height: 1.4;
+        margin: 0;
+    }
+    .sys-action-row {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 6px;
+    }
+    .sys-action form { margin: 0; }
+    .sys-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .sys-pill.ok   { background: var(--ab-success-soft); color: #155724; }
+    .sys-pill.warn { background: var(--ab-warning-soft); color: #856404; }
+    .sys-pill.err  { background: var(--ab-danger-soft);  color: #721C24; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ab-page-head">
+    <div>
+        <h1 class="ab-page-title">Centre système</h1>
+        <p class="ab-page-sub">Supervision, sauvegardes, exports et maintenance de la plateforme.</p>
+    </div>
+</div>
+
+{# ===== ÉTAT DU SYSTÈME ===== #}
+<div class="ab-card">
+    <div class="ab-card-header">
+        <h2>État du système</h2>
+    </div>
+    <div class="ab-card-body">
+        <div class="sys-status-grid">
+
+            <div class="sys-status">
+                <div class="sys-status-icon {% if status.db_ok %}ok{% else %}err{% endif %}">
+                    <i class="bi bi-database"></i>
+                </div>
+                <div class="sys-status-body">
+                    <div class="sys-status-label">Base de données</div>
+                    <div class="sys-status-value">
+                        {% if status.db_ok %}
+                            <span class="sys-pill ok"><i class="bi bi-check-circle"></i> OK</span>
+                        {% else %}
+                            <span class="sys-pill err"><i class="bi bi-x-circle"></i> Erreur</span>
+                        {% endif %}
+                    </div>
+                    <div class="sys-status-sub">{{ status.db_msg }}</div>
+                </div>
+            </div>
+
+            <div class="sys-status">
+                <div class="sys-status-icon {% if status.smtp_state == 'ok' %}ok{% else %}warn{% endif %}">
+                    <i class="bi bi-envelope"></i>
+                </div>
+                <div class="sys-status-body">
+                    <div class="sys-status-label">SMTP email</div>
+                    <div class="sys-status-value">
+                        {% if status.smtp_state == 'ok' %}
+                            <span class="sys-pill ok"><i class="bi bi-check-circle"></i> OK</span>
+                        {% else %}
+                            <span class="sys-pill warn"><i class="bi bi-exclamation-triangle"></i> Attention</span>
+                        {% endif %}
+                    </div>
+                    <div class="sys-status-sub">{{ status.smtp_msg }}</div>
+                </div>
+            </div>
+
+            <div class="sys-status">
+                <div class="sys-status-icon {% if status.last_backup %}ok{% else %}warn{% endif %}">
+                    <i class="bi bi-cloud-arrow-down"></i>
+                </div>
+                <div class="sys-status-body">
+                    <div class="sys-status-label">Dernière sauvegarde</div>
+                    <div class="sys-status-value">
+                        {% if status.last_backup %}
+                            {{ status.last_backup.at|date:"d/m/Y H:i" }}
+                        {% else %}
+                            <span class="sys-pill warn"><i class="bi bi-exclamation-triangle"></i> Jamais</span>
+                        {% endif %}
+                    </div>
+                    <div class="sys-status-sub">
+                        {% if status.last_backup %}{{ status.last_backup.kind }}{% else %}Aucun export effectué{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="sys-status">
+                <div class="sys-status-icon neutral">
+                    <i class="bi bi-hdd"></i>
+                </div>
+                <div class="sys-status-body">
+                    <div class="sys-status-label">Stockage médias</div>
+                    <div class="sys-status-value">{{ status.storage_mb }} Mo</div>
+                    <div class="sys-status-sub">Logos, pièces jointes, exports</div>
+                </div>
+            </div>
+
+            <div class="sys-status">
+                <div class="sys-status-icon {% if status.active_alerts == 0 %}ok{% elif status.active_alerts < 5 %}warn{% else %}err{% endif %}">
+                    <i class="bi bi-exclamation-triangle"></i>
+                </div>
+                <div class="sys-status-body">
+                    <div class="sys-status-label">Alertes actives</div>
+                    <div class="sys-status-value">
+                        {% if status.active_alerts == 0 %}
+                            <span class="sys-pill ok"><i class="bi bi-check-circle"></i> Aucune</span>
+                        {% else %}
+                            {{ status.active_alerts }}
+                        {% endif %}
+                    </div>
+                    <div class="sys-status-sub">{{ status.overdue }} retard · {{ status.low_stock }} stock</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{# ===== SAUVEGARDES ===== #}
+<div class="ab-card">
+    <div class="ab-card-header">
+        <h2>Sauvegardes</h2>
+        {% if status.last_backup %}
+            <span class="ab-text-faint">Dernière : {{ status.last_backup.at|date:"d/m/Y H:i" }} — {{ status.last_backup.kind }}</span>
+        {% else %}
+            <span class="ab-text-faint">Aucune sauvegarde enregistrée</span>
+        {% endif %}
+    </div>
+    <div class="ab-card-body">
+        <div class="sys-actions">
+
+            <div class="sys-action">
+                <div class="sys-action-title"><i class="bi bi-database-down"></i> Exporter la base (JSON)</div>
+                <p class="sys-action-desc">Dump complet de la base, exploitable par <code>loaddata</code>. Format portable, indépendant du SGBD.</p>
+                <div class="sys-action-row">
+                    <a href="{% url 'admin:system_export_db' %}" class="ab-btn ab-btn-primary">
+                        <i class="bi bi-download"></i> Télécharger
+                    </a>
+                </div>
+            </div>
+
+            <div class="sys-action">
+                <div class="sys-action-title"><i class="bi bi-file-earmark-zip"></i> Archive complète (ZIP)</div>
+                <p class="sys-action-desc">Base + tous les exports CSV (clients, factures, paiements, audit) dans un seul fichier.</p>
+                <div class="sys-action-row">
+                    <a href="{% url 'admin:system_export_archive' %}" class="ab-btn ab-btn-primary">
+                        <i class="bi bi-download"></i> Télécharger
+                    </a>
+                </div>
+            </div>
+
+            <div class="sys-action">
+                <div class="sys-action-title"><i class="bi bi-journal-text"></i> Exporter les journaux d'audit</div>
+                <p class="sys-action-desc">Toutes les actions tracées (création / modification / suppression) au format CSV.</p>
+                <div class="sys-action-row">
+                    <a href="{% url 'admin:system_export_audit' %}" class="ab-btn ab-btn-secondary">
+                        <i class="bi bi-download"></i> Exporter CSV
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{# ===== EXPORTS MÉTIER ===== #}
+<div class="ab-card">
+    <div class="ab-card-header">
+        <h2>Exports métier</h2>
+    </div>
+    <div class="ab-card-body">
+        <div class="sys-actions">
+
+            <div class="sys-action">
+                <div class="sys-action-title"><i class="bi bi-people"></i> Clients</div>
+                <p class="sys-action-desc">Liste complète des clients avec coordonnées et statut, au format CSV (séparateur ;).</p>
+                <div class="sys-action-row">
+                    <a href="{% url 'admin:system_export_clients' %}" class="ab-btn ab-btn-secondary">
+                        <i class="bi bi-download"></i> Exporter CSV
+                    </a>
+                </div>
+            </div>
+
+            <div class="sys-action">
+                <div class="sys-action-title"><i class="bi bi-file-earmark-text"></i> Factures</div>
+                <p class="sys-action-desc">Toutes les factures avec montants, statut et mode de règlement.</p>
+                <div class="sys-action-row">
+                    <a href="{% url 'admin:system_export_invoices' %}" class="ab-btn ab-btn-secondary">
+                        <i class="bi bi-download"></i> Exporter CSV
+                    </a>
+                </div>
+            </div>
+
+            <div class="sys-action">
+                <div class="sys-action-title"><i class="bi bi-cash-stack"></i> Paiements</div>
+                <p class="sys-action-desc">Historique complet des encaissements liés aux factures.</p>
+                <div class="sys-action-row">
+                    <a href="{% url 'admin:system_export_payments' %}" class="ab-btn ab-btn-secondary">
+                        <i class="bi bi-download"></i> Exporter CSV
+                    </a>
+                </div>
+            </div>
+
+            <div class="sys-action">
+                <div class="sys-action-title"><i class="bi bi-shield-check"></i> Journaux d'audit</div>
+                <p class="sys-action-desc">Traçabilité complète des actions effectuées dans l'application.</p>
+                <div class="sys-action-row">
+                    <a href="{% url 'admin:system_export_audit' %}" class="ab-btn ab-btn-secondary">
+                        <i class="bi bi-download"></i> Exporter CSV
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{# ===== MAINTENANCE ===== #}
+<div class="ab-card">
+    <div class="ab-card-header">
+        <h2>Maintenance</h2>
+    </div>
+    <div class="ab-card-body">
+        <div class="sys-actions">
+
+            <div class="sys-action">
+                <div class="sys-action-title"><i class="bi bi-arrow-clockwise"></i> Mettre à jour les statuts des factures</div>
+                <p class="sys-action-desc">Bascule en <em>EN_RETARD</em> les factures non payees dont la date d'échéance est dépassée.</p>
+                <div class="sys-action-row">
+                    <form method="post" action="{% url 'admin:system_action_recompute_stats' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="ab-btn ab-btn-primary">
+                            <i class="bi bi-arrow-clockwise"></i> Mettre à jour
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="sys-action">
+                <div class="sys-action-title"><i class="bi bi-box-seam"></i> Vérifier les stocks faibles</div>
+                <p class="sys-action-desc">Compte les produits sous leur seuil d'alerte et rafraîchit les indicateurs.</p>
+                <div class="sys-action-row">
+                    <form method="post" action="{% url 'admin:system_action_check_low_stock' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="ab-btn ab-btn-primary">
+                            <i class="bi bi-search"></i> Vérifier
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="sys-action">
+                <div class="sys-action-title"><i class="bi bi-envelope-check"></i> Tester l'envoi SMTP</div>
+                <p class="sys-action-desc">Envoie un email de test à votre adresse pour valider la configuration SMTP.</p>
+                <div class="sys-action-row">
+                    <form method="post" action="{% url 'admin:system_action_test_smtp' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="ab-btn ab-btn-primary">
+                            <i class="bi bi-send"></i> Envoyer un test
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="sys-action">
+                <div class="sys-action-title"><i class="bi bi-bell-slash"></i> Nettoyer anciennes notifications</div>
+                <p class="sys-action-desc">Supprime les notifications de plus de <strong>90 jours</strong>. Action irréversible.</p>
+                <div class="sys-action-row">
+                    <form method="post" action="{% url 'admin:system_action_clean_notifications' %}"
+                          onsubmit="return confirm('Confirmer la suppression des notifications de plus de 90 jours ?');">
+                        {% csrf_token %}
+                        <button type="submit" class="ab-btn ab-btn-warning">
+                            <i class="bi bi-trash"></i> Nettoyer
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="sys-action">
+                <div class="sys-action-title"><i class="bi bi-journal-x"></i> Nettoyer anciens journaux</div>
+                <p class="sys-action-desc">Supprime les journaux d'audit de plus d'<strong>1 an</strong>. Action irréversible.</p>
+                <div class="sys-action-row">
+                    <form method="post" action="{% url 'admin:system_action_clean_logs' %}"
+                          onsubmit="return confirm('Confirmer la suppression des journaux de plus d\u2019un an ?');">
+                        {% csrf_token %}
+                        <button type="submit" class="ab-btn ab-btn-warning">
+                            <i class="bi bi-trash"></i> Nettoyer
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="sys-action">
+                <div class="sys-action-title"><i class="bi bi-hdd-network"></i> Vider le cache</div>
+                <p class="sys-action-desc">Vide intégralement le cache applicatif. Sans risque pour les données métier.</p>
+                <div class="sys-action-row">
+                    <form method="post" action="{% url 'admin:system_action_clear_cache' %}"
+                          onsubmit="return confirm('Confirmer le vidage du cache applicatif ?');">
+                        {% csrf_token %}
+                        <button type="submit" class="ab-btn ab-btn-secondary">
+                            <i class="bi bi-trash"></i> Vider le cache
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{# ===== ACTIVITÉ SYSTÈME RÉCENTE ===== #}
+<div class="ab-card">
+    <div class="ab-card-header">
+        <h2>Activité système récente</h2>
+        <a class="ab-link" href="{% url 'admin:invoice_app_auditlog_changelist' %}">Tout voir</a>
+    </div>
+    <div class="ab-card-body" style="padding:0;">
+        {% if recent_audit %}
+        <table class="ab-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Action</th>
+                    <th>Modèle</th>
+                    <th>Objet</th>
+                    <th>Utilisateur</th>
+                    <th>IP</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in recent_audit %}
+                <tr>
+                    <td class="ab-text-faint">{{ log.timestamp|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        {% if log.action == 'create' %}<span class="ab-badge ab-badge-success">Création</span>
+                        {% elif log.action == 'update' %}<span class="ab-badge ab-badge-info">Modification</span>
+                        {% elif log.action == 'delete' %}<span class="ab-badge ab-badge-danger">Suppression</span>
+                        {% else %}<span class="ab-badge ab-badge-muted">{{ log.get_action_display }}</span>{% endif %}
+                    </td>
+                    <td>{{ log.get_model_display }}</td>
+                    <td class="ab-text-strong">{{ log.object_str|default:"—" }}</td>
+                    <td class="ab-text-faint">{{ log.user|default:"—" }}</td>
+                    <td class="ab-text-faint">{{ log.ip_address|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="ab-empty">Aucune activité enregistrée pour le moment.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

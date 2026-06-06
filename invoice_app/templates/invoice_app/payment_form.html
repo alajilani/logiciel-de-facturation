@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="container-fluid">
-    <h1 class="mb-4"><i class="bi bi-cash-coin"></i> Enregistrer un paiement</h1>
+    <h1 class="mb-4">Enregistrer un paiement</h1>
     
     <div class="row">
         <div class="col-md-8">
@@ -14,11 +14,15 @@
                 </div>
                 <div class="card-body">
                     <p>
-                        <strong>Client:</strong> {{ invoice.client.name }}<br>
-                        <strong>Montant total:</strong> {{ invoice.total|floatformat:2 }}€<br>
+                        <strong>Client:</strong> {{ invoice.client.nom }}<br>
+                        <strong>Montant total:</strong> {{ invoice.total_ttc|floatformat:2 }}€<br>
                         <strong>Montant déjà payé:</strong> {{ invoice.amount_paid|floatformat:2 }}€<br>
-                        <strong>Montant restant:</strong> {{ invoice.remaining_amount|floatformat:2 }}€
+                        <strong>Montant restant:</strong> {{ invoice.reste_a_payer|floatformat:2 }}€
                     </p>
+                    <div class="alert alert-info py-2 mb-0">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Mode de règlement prévu :</strong> {{ invoice.get_payment_method_display }}
+                    </div>
                 </div>
             </div>
 

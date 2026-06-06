@@ -1,0 +1,9 @@
+{% load admin_extras %}
+<div class="ab-field {% if field.errors %}has-error{% endif %}">
+  <label for="{{ field.id_for_label }}">
+    {{ field.label }}{% if field.field.required %} <span class="ab-required">*</span>{% endif %}
+  </label>
+  {{ field|add_class:"ab-input" }}
+  {% if field.help_text %}<div class="ab-field-help">{{ field.help_text }}</div>{% endif %}
+  {% if field.errors %}<div class="ab-field-error">{{ field.errors }}</div>{% endif %}
+</div>

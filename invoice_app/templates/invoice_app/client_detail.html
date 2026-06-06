@@ -6,54 +6,141 @@
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-md-8">
-            <h1><i class="bi bi-person"></i> {{ client.name }}</h1>
+            <h1>{{ client.nom }}</h1>
+            <p class="text-muted">{{ client.get_type_client_display }} - 
+                {% if client.statut == 'ACTIF' %}
+                    <span class="badge bg-success">Actif</span>
+                {% else %}
+                    <span class="badge bg-danger">Inactif</span>
+                {% endif %}
+            </p>
         </div>
         <div class="col-md-4 text-end">
             <a href="{% url 'client-update' client.id %}" class="btn btn-warning">
                 <i class="bi bi-pencil"></i> Modifier
             </a>
             <a href="{% url 'client-delete' client.id %}" class="btn btn-danger">
-                <i class="bi bi-trash"></i> Supprimer
+                <i class="bi bi-trash"></i> Archiver
             </a>
         </div>
     </div>
 
     <div class="row">
-        <div class="col-md-6">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">Informations</h5>
+        <!-- Informations générales -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Informations générales</h5>
                 </div>
                 <div class="card-body">
-                    <p>
-                        <strong>Email:</strong> {{ client.email }}<br>
-                        <strong>Téléphone:</strong> {{ client.phone }}<br>
-                        <strong>Pays:</strong> {{ client.country }}<br>
-                        <strong>TVA Intracommunautaire:</strong> {{ client.tva_intra }}
+                    {% if client.type_client == 'ENTREPRISE' %}
+                        <p class="mb-2">
+                            <strong>Raison sociale:</strong><br>
+                            {{ client.raison_sociale }}
+                        </p>
+                        <p class="mb-2">
+                            <strong>Contact principal:</strong><br>
+                            {{ client.contact_principal|default:"-" }}
+                        </p>
+                    {% endif %}
+                    <p class="mb-2">
+                        <strong>Email:</strong><br>
+                        <a href="mailto:{{ client.email }}">{{ client.email|default:"-" }}</a>
+                    </p>
+                    <p class="mb-0">
+                        <strong>Téléphone:</strong><br>
+                        <a href="tel:{{ client.telephone }}">{{ client.telephone|default:"-" }}</a>
                     </p>
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">Adresses</h5>
+
+        <!-- Informations fiscales et commerciales -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Informations commerciales</h5>
                 </div>
                 <div class="card-body">
-                    <p>
-                        <strong>Livraison:</strong><br>
-                        {{ client.delivery_address }}<br><br>
-                        <strong>Facturation:</strong><br>
-                        {{ client.billing_address }}
+                    <p class="mb-2">
+                        <strong>Conditions de paiement:</strong><br>
+                        {{ client.get_conditions_paiement_display }}
                     </p>
+                    {% if client.numero_tva_intracommunautaire %}
+                    <p class="mb-2">
+                        <strong>TVA Intracommunautaire:</strong><br>
+                        {{ client.numero_tva_intracommunautaire }}
+                    </p>
+                    {% endif %}
+                    {% if client.siret_siren %}
+                    <p class="mb-0">
+                        <strong>SIRET/SIREN:</strong><br>
+                        {{ client.siret_siren }}
+                    </p>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">Factures</h5>
+    <div class="row">
+        <!-- Adresse de facturation -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Adresse de facturation</h5>
+                </div>
+                <div class="card-body">
+                    <address>
+                        {{ client.adresse_facturation }}<br>
+                        {{ client.code_postal_facturation }} {{ client.ville_facturation }}<br>
+                        {{ client.pays_facturation }}
+                    </address>
+                </div>
+            </div>
+        </div>
+
+        <!-- Adresse de livraison -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Adresse de livraison</h5>
+                </div>
+                <div class="card-body">
+                    {% if client.livraison_identique_facturation %}
+                        <p class="text-muted mb-3"><i class="bi bi-info-circle"></i> Identique à facturation</p>
+                    {% endif %}
+                    <address>
+                        {{ client.adresse_livraison|default:"-" }}<br>
+                        {% if client.code_postal_livraison %}
+                            {{ client.code_postal_livraison }} {{ client.ville_livraison }}<br>
+                        {% endif %}
+                        {{ client.pays_livraison|default:"-" }}
+                    </address>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if client.notes_internes %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Notes internes</h5>
+                </div>
+                <div class="card-body">
+                    {{ client.notes_internes }}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Factures du client -->
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">Factures associées</h5>
         </div>
         <div class="table-responsive">
             <table class="table table-hover mb-0">
@@ -62,26 +149,38 @@
                         <th>Numéro</th>
                         <th>Date</th>
                         <th>Total</th>
+                        <th>Payé</th>
                         <th>Statut</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for invoice in invoices %}
                     <tr>
-                        <td><a href="{% url 'invoice-detail' invoice.id %}">{{ invoice.invoice_number }}</a></td>
+                        <td><a href="{% url 'invoice-detail' invoice.id %}"><strong>{{ invoice.invoice_number }}</strong></a></td>
                         <td>{{ invoice.date|date:"d/m/Y" }}</td>
-                        <td>{{ invoice.total|floatformat:2 }}€</td>
+                        <td>{{ invoice.total_ttc|floatformat:2 }}€</td>
+                        <td>{{ invoice.amount_paid|floatformat:2 }}€</td>
                         <td>
-                            {% if invoice.payment_status == 'paid' %}
+                            {% if invoice.statut == 'PAYEE' %}
                                 <span class="badge bg-success">Payée</span>
-                            {% elif invoice.payment_status == 'pending' %}
-                                <span class="badge bg-warning">En attente</span>
+                            {% elif invoice.statut == 'PARTIELLEMENT_PAYEE' %}
+                                <span class="badge bg-info">Partielle</span>
+                            {% elif invoice.statut == 'EN_RETARD' %}
+                                <span class="badge bg-danger">En retard</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">{{ invoice.get_statut_display }}</span>
                             {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'invoice-detail' invoice.id %}" class="btn btn-sm btn-info">
+                                <i class="bi bi-eye"></i>
+                            </a>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="text-center text-muted">Aucune facture</td>
+                        <td colspan="6" class="text-center text-muted">Aucune facture</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -89,9 +188,19 @@
         </div>
     </div>
 
+    <!-- Timestamps -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <small class="text-muted">
+                Créé le {{ client.created_at|date:"d/m/Y à H:i" }} - 
+                Modifié le {{ client.updated_at|date:"d/m/Y à H:i" }}
+            </small>
+        </div>
+    </div>
+
     <div class="mt-4">
         <a href="{% url 'client-list' %}" class="btn btn-secondary">
-            <i class="bi bi-arrow-left"></i> Retour
+            <i class="bi bi-arrow-left"></i> Retour à la liste
         </a>
     </div>
 </div>

@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Factures - FactureApp{% endblock %}
+{% block title %}Factures — Numa{% endblock %}
 
 {% block content %}
 <!-- Page Header -->
 <div class="page-header">
-    <h1><i class="bi bi-file-text"></i> Factures</h1>
+    <h1>Factures</h1>
     <div class="list-actions">
         <a href="{% url 'invoice-create' %}" class="btn btn-primary">
             <i class="bi bi-plus-circle"></i> Nouvelle facture
@@ -25,7 +25,7 @@
         </div>
         <div>
             <label class="filter-group-label">Statut</label>
-            {{ form.payment_status }}
+            {{ form.statut }}
         </div>
         <div>
             <label class="filter-group-label">Du</label>
@@ -64,20 +64,24 @@
                     {% for invoice in invoices %}
                     <tr>
                         <td><strong>{{ invoice.invoice_number }}</strong></td>
-                        <td>{{ invoice.client.name }}</td>
+                        <td>{{ invoice.client.nom }}</td>
                         <td>{{ invoice.date|date:"d/m/Y" }}</td>
-                        <td>{{ invoice.subtotal|floatformat:2 }}€</td>
-                        <td>{{ invoice.tva_amount|floatformat:2 }}€</td>
-                        <td><strong style="color: var(--primary-color);">{{ invoice.total|floatformat:2 }}€</strong></td>
+                        <td>{{ invoice.sous_total_ht|floatformat:2 }}€</td>
+                        <td>{{ invoice.total_tva|floatformat:2 }}€</td>
+                        <td><strong style="color: var(--primary-color);">{{ invoice.total_ttc|floatformat:2 }}€</strong></td>
                         <td>
-                            {% if invoice.payment_status == 'paid' %}
-                                <span class="badge bg-success">✓ Payée</span>
-                            {% elif invoice.payment_status == 'pending' %}
-                                <span class="badge bg-warning">⏱ En attente</span>
-                            {% elif invoice.payment_status == 'partial' %}
-                                <span class="badge bg-info">◐ Partielle</span>
-                            {% elif invoice.payment_status == 'overdue' %}
-                                <span class="badge bg-danger">⚠ En retard</span>
+                            {% if invoice.statut == 'PAYEE' %}
+                                <span class="badge bg-success">Payée</span>
+                            {% elif invoice.statut == 'ENVOYEE' %}
+                                <span class="badge bg-warning text-dark">Envoyée</span>
+                            {% elif invoice.statut == 'PARTIELLEMENT_PAYEE' %}
+                                <span class="badge bg-info">Partielle</span>
+                            {% elif invoice.statut == 'EN_RETARD' %}
+                                <span class="badge bg-danger">En retard</span>
+                            {% elif invoice.statut == 'ANNULEE' %}
+                                <span class="badge bg-secondary">Annulée</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">{{ invoice.get_statut_display }}</span>
                             {% endif %}
                         </td>
                         <td>

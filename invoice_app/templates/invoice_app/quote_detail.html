@@ -5,14 +5,19 @@
 {% block content %}
 <div class="container mt-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>📋 Devis {{ quote.quote_number }}</h1>
+        <h1>Devis {{ quote.quote_number }}</h1>
         <div class="btn-group" role="group">
-            <a href="{% url 'quote-update' quote.id %}" class="btn btn-warning">✏️ Modifier</a>
-            <a href="{% url 'export-quote-pdf' quote.id %}" class="btn btn-success">📄 Télécharger PDF</a>
-            {% if quote.status != 'converted' %}
-            <a href="{% url 'quote-to-invoice' quote.id %}" class="btn btn-primary">📊 Convertir en Facture</a>
+            <a href="{% url 'quote-update' quote.id %}" class="btn btn-warning"><i class="bi bi-pencil me-1"></i>Modifier</a>
+            <a href="{% url 'export-quote-pdf' quote.id %}" class="btn btn-success"><i class="bi bi-file-earmark-pdf me-1"></i>Télécharger PDF</a>
+            {% if quote.client.email %}
+            <a href="{% url 'send-quote-email' quote.id %}" class="btn btn-primary">
+                <i class="bi bi-envelope"></i> Envoyer par email
+            </a>
             {% endif %}
-            <a href="{% url 'quote-delete' quote.id %}" class="btn btn-danger">🗑️ Supprimer</a>
+            {% if quote.status != 'converted' %}
+            <a href="{% url 'quote-to-invoice' quote.id %}" class="btn btn-primary"><i class="bi bi-arrow-right-circle me-1"></i>Convertir en facture</a>
+            {% endif %}
+            <a href="{% url 'quote-delete' quote.id %}" class="btn btn-danger"><i class="bi bi-trash me-1"></i>Supprimer</a>
         </div>
     </div>
 
@@ -74,14 +79,14 @@
                     <h5>Client</h5>
                 </div>
                 <div class="card-body">
-                    <p><strong>Nom:</strong> {{ quote.client.name }}</p>
+                    <p><strong>Nom:</strong> {{ quote.client.nom }}</p>
                     <p><strong>Email:</strong> {{ quote.client.email }}</p>
-                    <p><strong>Téléphone:</strong> {{ quote.client.phone }}</p>
-                    <p><strong>Pays:</strong> {{ quote.client.country }}</p>
+                    <p><strong>Téléphone:</strong> {{ quote.client.telephone }}</p>
+                    <p><strong>Pays:</strong> {{ quote.client.pays_facturation }}</p>
                     <p><strong>Adresse:</strong></p>
-                    <p>{{ quote.client.delivery_address }}</p>
-                    {% if quote.client.tva_intra %}
-                    <p><strong>TVA Intracommunautaire:</strong> {{ quote.client.tva_intra }}</p>
+                    <p>{{ quote.client.adresse_complete_livraison }}</p>
+                    {% if quote.client.numero_tva_intracommunautaire %}
+                    <p><strong>TVA Intracommunautaire:</strong> {{ quote.client.numero_tva_intracommunautaire }}</p>
                     {% endif %}
                 </div>
             </div>
@@ -167,9 +172,9 @@
         </div>
         <div class="card-body">
             <div class="btn-group" role="group">
-                <a href="{% url 'quote-change-status' quote.id 'sent' %}" class="btn btn-info">📤 Marquer comme Envoyé</a>
-                <a href="{% url 'quote-change-status' quote.id 'accepted' %}" class="btn btn-success">✅ Marquer comme Accepté</a>
-                <a href="{% url 'quote-change-status' quote.id 'rejected' %}" class="btn btn-danger">❌ Marquer comme Rejeté</a>
+                <a href="{% url 'quote-change-status' quote.id 'sent' %}" class="btn btn-info"><i class="bi bi-send me-1"></i>Marquer comme envoyé</a>
+                <a href="{% url 'quote-change-status' quote.id 'accepted' %}" class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>Marquer comme accepté</a>
+                <a href="{% url 'quote-change-status' quote.id 'rejected' %}" class="btn btn-danger"><i class="bi bi-x-circle me-1"></i>Marquer comme rejeté</a>
             </div>
         </div>
     </div>

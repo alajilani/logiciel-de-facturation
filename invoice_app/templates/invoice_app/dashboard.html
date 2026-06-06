@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}Tableau de bord - FactureApp{% endblock %}
+{% block title %}Tableau de bord — Numa{% endblock %}
 
 {% block content %}
 <!-- Page Header -->
 <div class="page-header">
     <div>
-        <h1><i class="bi bi-speedometer2"></i> Tableau de bord</h1>
+        <h1>Tableau de bord</h1>
         <p style="color: var(--text-secondary); margin-top: 0.25rem;">Bienvenue dans votre espace de gestion</p>
     </div>
     <div>
@@ -62,7 +62,7 @@
 <!-- Quick Actions -->
 <div class="card mb-4">
     <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-lightning"></i> Actions rapides</h5>
+        <h5 class="mb-0">Actions rapides</h5>
     </div>
     <div class="card-body">
         <div class="quick-actions">
@@ -83,7 +83,7 @@
 <div class="card">
     <div class="card-header">
         <div class="d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="bi bi-clock-history"></i> Dernières factures</h5>
+            <h5 class="mb-0">Dernières factures</h5>
             <a href="{% url 'invoice-list' %}" style="color: var(--primary-color); text-decoration: none; font-size: 0.875rem; font-weight: 500;">Voir toutes →</a>
         </div>
     </div>
@@ -104,18 +104,20 @@
                     {% for invoice in recent_invoices %}
                     <tr>
                         <td><strong>{{ invoice.invoice_number }}</strong></td>
-                        <td>{{ invoice.client.name }}</td>
+                        <td>{{ invoice.client.nom }}</td>
                         <td>{{ invoice.date|date:"d/m/Y" }}</td>
-                        <td><strong>{{ invoice.total|floatformat:2 }}€</strong></td>
+                        <td><strong>{{ invoice.total_ttc|floatformat:2 }}€</strong></td>
                         <td>
-                            {% if invoice.payment_status == 'paid' %}
-                                <span class="badge bg-success">✓ Payée</span>
-                            {% elif invoice.payment_status == 'pending' %}
-                                <span class="badge bg-warning">⏱ En attente</span>
-                            {% elif invoice.payment_status == 'partial' %}
-                                <span class="badge bg-info">◐ Partielle</span>
-                            {% elif invoice.payment_status == 'overdue' %}
-                                <span class="badge bg-danger">⚠ En retard</span>
+                            {% if invoice.statut == 'PAYEE' %}
+                                <span class="badge bg-success">Payée</span>
+                            {% elif invoice.statut == 'ENVOYEE' %}
+                                <span class="badge bg-warning text-dark">Envoyée</span>
+                            {% elif invoice.statut == 'PARTIELLEMENT_PAYEE' %}
+                                <span class="badge bg-info">Partielle</span>
+                            {% elif invoice.statut == 'EN_RETARD' %}
+                                <span class="badge bg-danger">En retard</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">{{ invoice.get_statut_display }}</span>
                             {% endif %}
                         </td>
                         <td>
@@ -155,17 +157,48 @@
     </div>
 </div>
 
-<!-- Company Info Notice -->
-{% if not company_info %}
-<div class="alert alert-warning mt-4" style="margin-bottom: 2rem;">
-    <div style="display: flex; align-items: center; gap: 1rem;">
-        <i class="bi bi-exclamation-circle" style="font-size: 1.5rem;"></i>
-        <div>
-            <strong>Configuration incomplète</strong><br>
-            <span style="font-size: 0.875rem;">Veuillez compléter les <a href="{% url 'company-info' %}" class="alert-link">informations de votre entreprise</a> pour personnaliser vos factures.</span>
+<div class="card mt-4">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Alertes importantes</h5>
+            <a href="{% url 'notification-list' %}" style="color: var(--primary-color); text-decoration: none; font-size: 0.875rem; font-weight: 500;">Voir tout →</a>
         </div>
     </div>
+    <div class="card-body">
+        {% if recent_notifications %}
+            <div class="list-group list-group-flush">
+                {% for notif in recent_notifications %}
+                <a href="{% url 'notification-open' notif.id %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-start">
+                    <div class="me-3">
+                        <div class="fw-semibold d-flex align-items-center gap-2">
+                            {% if notif.titre == 'Facture en retard' %}
+                                <i class="bi bi-exclamation-octagon text-danger"></i>
+                            {% elif notif.titre == 'Stock faible' %}
+                                <i class="bi bi-box text-warning"></i>
+                            {% elif notif.titre == 'Rupture de stock' %}
+                                <i class="bi bi-box2-heart text-danger"></i>
+                            {% elif notif.titre == 'Paiement partiel' %}
+                                <i class="bi bi-cash-coin text-warning"></i>
+                            {% else %}
+                                <i class="bi bi-calendar-event text-warning"></i>
+                            {% endif %}
+                            {{ notif.titre }}
+                        </div>
+                        <small class="text-muted d-block">{{ notif.message|striptags|truncatechars:120 }}</small>
+                        <small class="text-secondary">{{ notif.date_creation|date:"d/m/Y H:i" }}</small>
+                    </div>
+                    <div class="d-flex flex-column align-items-end gap-1">
+                        <span class="badge bg-light text-dark">{{ notif.get_type_notification_display }}</span>
+                        <span class="badge bg-{% if notif.niveau == 'HAUTE' %}danger{% elif notif.niveau == 'MOYENNE' %}warning text-dark{% else %}secondary{% endif %}">{{ notif.niveau }}</span>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted mb-0">Aucune alerte importante non lue.</p>
+        {% endif %}
+    </div>
 </div>
-{% endif %}
+
 </div>
 {% endblock %}

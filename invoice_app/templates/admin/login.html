@@ -1,0 +1,363 @@
+{% load i18n static %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connexion administrateur — Numa Admin</title>
+<link rel="icon" type="image/svg+xml" href="{% static 'img/logo.svg' %}">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  :root {
+    --bg: #eef1f5;
+    --bg-grid: rgba(30, 35, 41, 0.04);
+
+    --sidebar-dark: #1E2329;
+    --sidebar-dark-2: #262C33;
+    --sidebar-border: rgba(255, 255, 255, 0.06);
+    --sidebar-text-strong: #FFFFFF;
+    --sidebar-text-muted: #8A93A1;
+
+    --card-bg: #ffffff;
+    --border: #dde1e7;
+    --border-soft: #eef0f3;
+    --text: #2c3e50;
+    --text-muted: #6c757d;
+    --label: #3d4852;
+
+    --primary: #007BFF;
+    --primary-hover: #0069d9;
+    --primary-focus: rgba(0, 123, 255, 0.18);
+    --accent: #4DA3FF;
+
+    --danger-bg: #fdecea;
+    --danger-text: #b3261e;
+    --danger-border: #f5c6cb;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    font-family: "Inter", "Source Sans Pro", "Segoe UI", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--bg-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 32px 20px;
+  }
+
+  .login-wrapper { width: 100%; max-width: 420px; }
+
+  /* ============ CARD ============ */
+  .login-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.05),
+      0 12px 30px -8px rgba(15, 23, 42, 0.14);
+  }
+
+  /* ============ HEADER SOMBRE ============ */
+  .login-header {
+    background: linear-gradient(180deg, var(--sidebar-dark) 0%, var(--sidebar-dark-2) 100%);
+    padding: 22px 26px 20px;
+    border-bottom: 1px solid var(--sidebar-border);
+    position: relative;
+  }
+  .login-header::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent) 50%, transparent);
+    opacity: 0.7;
+  }
+
+  .login-header-top {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    margin-bottom: 14px;
+  }
+  .login-logo {
+    width: 32px; height: 32px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--sidebar-border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .login-logo img {
+    width: 100%; height: 100%;
+    object-fit: contain;
+    border-radius: 6px;
+  }
+  .login-brand {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    line-height: 1;
+  }
+  .login-brand strong {
+    font-size: 15px; font-weight: 600;
+    color: var(--sidebar-text-strong);
+    letter-spacing: -0.015em;
+  }
+  .login-brand span {
+    font-size: 13.5px; font-weight: 400;
+    color: rgba(255, 255, 255, 0.42);
+  }
+
+  .admin-badge {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(77, 163, 255, 0.12);
+    border: 1px solid rgba(77, 163, 255, 0.25);
+    border-radius: 3px;
+  }
+  .admin-badge i { font-size: 11px; }
+
+  .login-title {
+    font-size: 14.5px; font-weight: 600;
+    color: var(--sidebar-text-strong);
+    margin: 0 0 3px;
+  }
+  .login-subtitle {
+    font-size: 12.5px;
+    color: var(--sidebar-text-muted);
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  /* ============ BODY FORM ============ */
+  .login-body {
+    padding: 22px 26px;
+    background: var(--card-bg);
+  }
+
+  .form-row { margin-bottom: 13px; }
+  .form-row label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--label);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .input-wrap { position: relative; }
+  .input-wrap i {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #adb5bd;
+    font-size: 14px;
+    pointer-events: none;
+  }
+  .form-input {
+    width: 100%;
+    height: 38px;
+    padding: 0 12px 0 34px;
+    font-size: 13.5px;
+    font-family: inherit;
+    color: var(--text);
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    transition: border-color 0.12s, box-shadow 0.12s;
+  }
+  .form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-focus);
+  }
+  .form-input::placeholder { color: #aab2bd; }
+
+  .btn-submit {
+    width: 100%;
+    height: 40px;
+    margin-top: 8px;
+    background: var(--primary);
+    color: #fff;
+    border: 1px solid var(--primary);
+    border-radius: 4px;
+    font-size: 13.5px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-submit:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn-submit:focus { outline: none; box-shadow: 0 0 0 3px var(--primary-focus); }
+
+  .errornote,
+  .errorlist {
+    background: var(--danger-bg);
+    color: var(--danger-text);
+    border: 1px solid var(--danger-border);
+    border-radius: 4px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+    margin: 0 0 14px;
+    list-style: none;
+  }
+  .errorlist li { padding: 0; }
+  .form-row .errorlist {
+    margin: 6px 0 0;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  /* ============ FOOTER ============ */
+  .login-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 11px 26px;
+    background: #f7f8fa;
+    border-top: 1px solid var(--border-soft);
+    font-size: 12px;
+  }
+  .login-footer a {
+    color: var(--text-muted);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: color 0.12s;
+  }
+  .login-footer a:hover { color: var(--primary); }
+
+  .login-copyright {
+    margin: 16px 0 0;
+    font-size: 11px;
+    color: #95a0ad;
+    text-align: center;
+  }
+  .login-copyright .dot {
+    display: inline-block;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: #10b981;
+    margin: 0 6px 1px;
+    vertical-align: middle;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.18);
+  }
+</style>
+</head>
+<body>
+
+<div class="login-wrapper">
+
+  <div class="login-card">
+
+    <!-- HEADER SOMBRE -->
+    <div class="login-header">
+      <div class="login-header-top">
+        <span class="login-logo">
+          <img src="{% static 'img/logo.svg' %}" alt="Numa">
+        </span>
+        <span class="login-brand">
+          <strong>Numa</strong>
+          <span>Admin</span>
+        </span>
+        <span class="admin-badge"><i class="bi bi-shield-lock-fill"></i> Admin</span>
+      </div>
+
+      <p class="login-title">Connexion administrateur</p>
+      <p class="login-subtitle">Console d'administration · Gestion système, sécurité et supervision</p>
+    </div>
+
+    <!-- BODY FORM -->
+    <div class="login-body">
+
+      {% if form.errors and not form.non_field_errors %}
+        <p class="errornote">
+          {% blocktranslate count counter=form.errors.items|length %}Veuillez corriger l'erreur ci-dessous.{% plural %}Veuillez corriger les erreurs ci-dessous.{% endblocktranslate %}
+        </p>
+      {% endif %}
+
+      {% if form.non_field_errors %}
+        {% for error in form.non_field_errors %}
+          <p class="errornote">{{ error }}</p>
+        {% endfor %}
+      {% endif %}
+
+      <form action="{{ app_path }}" method="post" id="login-form" autocomplete="off">
+        {% csrf_token %}
+
+        <div class="form-row">
+          <label for="id_username">Identifiant</label>
+          <div class="input-wrap">
+            <i class="bi bi-person"></i>
+            <input type="text" name="{{ form.username.html_name }}" id="id_username"
+                   class="form-input" placeholder="Nom d'utilisateur administrateur"
+                   autocapitalize="none" autocomplete="username"
+                   maxlength="{{ form.username.field.max_length }}" required>
+          </div>
+          {{ form.username.errors }}
+        </div>
+
+        <div class="form-row">
+          <label for="id_password">Mot de passe</label>
+          <div class="input-wrap">
+            <i class="bi bi-lock"></i>
+            <input type="password" name="{{ form.password.html_name }}" id="id_password"
+                   class="form-input" placeholder="••••••••"
+                   autocomplete="current-password" required>
+          </div>
+          {{ form.password.errors }}
+        </div>
+
+        <input type="hidden" name="next" value="{{ next }}">
+
+        <button type="submit" class="btn-submit">
+          <i class="bi bi-shield-check"></i> Accéder au backoffice
+        </button>
+      </form>
+    </div>
+
+    <!-- FOOTER LINKS -->
+    <div class="login-footer">
+      <a href="/"><i class="bi bi-arrow-left"></i> Retour application</a>
+      <a href="{% url 'admin:password_change' %}"><i class="bi bi-key"></i> Mot de passe</a>
+    </div>
+
+  </div>
+
+  <p class="login-copyright">
+    <span class="dot"></span> Numa Admin · © 2026 · Accès restreint au personnel autorisé
+  </p>
+
+</div>
+
+</body>
+</html>

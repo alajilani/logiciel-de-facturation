@@ -1,0 +1,53 @@
+{% extends "invoice_app/emails/_email_base.html" %}
+
+{% block main_block %}
+<!-- Recap card -->
+<table role="presentation" class="recap" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background-color:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:6px 18px; margin-bottom:20px;">
+    <tr>
+        <td style="padding:12px 0; font-size:13px; color:#6b7280; border-bottom:1px solid #eef0f3;">Facture</td>
+        <td align="right" style="padding:12px 0; font-size:13px; color:#0f172a; font-weight:600; border-bottom:1px solid #eef0f3;">{{ invoice_number }}</td>
+    </tr>
+    <tr>
+        <td style="padding:12px 0; font-size:13px; color:#6b7280; border-bottom:1px solid #eef0f3;">Montant total</td>
+        <td align="right" style="padding:12px 0; font-size:13px; color:#0f172a; font-weight:500; border-bottom:1px solid #eef0f3;">{{ total_ttc }} €</td>
+    </tr>
+    <tr>
+        <td style="padding:12px 0; font-size:13px; color:#6b7280; border-bottom:1px solid #eef0f3;">Montant réglé</td>
+        <td align="right" style="padding:12px 0; font-size:13px; color:#0f172a; font-weight:500; border-bottom:1px solid #eef0f3;">{{ montant_paye }} €</td>
+    </tr>
+    <tr>
+        <td style="padding:12px 0; font-size:13px; color:#6b7280; border-bottom:1px solid #eef0f3;">Mode de règlement</td>
+        <td align="right" style="padding:12px 0; font-size:13px; color:#0f172a; font-weight:500; border-bottom:1px solid #eef0f3;">{{ methode_paiement }}</td>
+    </tr>
+    <tr>
+        <td style="padding:12px 0; font-size:13px; color:#6b7280;{% if reference %} border-bottom:1px solid #eef0f3;{% endif %}">Date du paiement</td>
+        <td align="right" style="padding:12px 0; font-size:13px; color:#0f172a; font-weight:500;{% if reference %} border-bottom:1px solid #eef0f3;{% endif %}">{{ date_paiement }}</td>
+    </tr>
+    {% if reference %}
+    <tr>
+        <td style="padding:12px 0; font-size:13px; color:#6b7280;">Référence</td>
+        <td align="right" style="padding:12px 0; font-size:13px; color:#0f172a; font-weight:500;">{{ reference }}</td>
+    </tr>
+    {% endif %}
+</table>
+
+<!-- Highlight: fully paid -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background-color:#ecfdf5; border:1px solid #a7f3d0; border-radius:10px;">
+    <tr>
+        <td style="padding:18px 20px;">
+            <div style="font-size:11px; color:#047857; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:6px;">
+                Statut de la facture
+            </div>
+            <div class="highlight-amount" style="font-size:22px; color:#065f46; font-weight:700; letter-spacing:-0.01em;">
+                Intégralement réglée
+            </div>
+        </td>
+    </tr>
+</table>
+
+<p style="margin:22px 0 0 0; font-size:14px; color:#4b5563;">
+    Merci pour votre confiance.
+</p>
+{% endblock %}

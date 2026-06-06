@@ -1,0 +1,141 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_extras %}
+
+{% block bodyclass %}dashboard{% endblock %}
+{% block content_title_topbar %}Tableau de bord{% endblock %}
+
+{% block content %}
+{% admin_kpis as kpi %}
+
+<div class="ab-page-head">
+    <div>
+        <h1 class="ab-page-title">Tableau de bord</h1>
+        <p class="ab-page-sub">Vue d'ensemble système — pilotage, supervision, configuration.</p>
+    </div>
+</div>
+
+<div class="kpi-grid">
+    <a class="kpi-card kpi-primary" href="{% url 'admin:auth_user_changelist' %}">
+        <div class="kpi-value">{{ kpi.total_users }}</div>
+        <div class="kpi-label">Utilisateurs</div>
+        <div class="kpi-sub">{{ kpi.active_users }} actifs</div>
+        <i class="bi bi-person kpi-icon"></i>
+    </a>
+
+    <div class="kpi-card kpi-info">
+        <div class="kpi-value">{{ kpi.total_clients }}</div>
+        <div class="kpi-label">Clients</div>
+        <div class="kpi-sub">{{ kpi.active_clients }} actifs</div>
+        <i class="bi bi-people kpi-icon"></i>
+    </div>
+
+    <div class="kpi-card kpi-success">
+        <div class="kpi-value">{{ kpi.total_invoices }}</div>
+        <div class="kpi-label">Factures</div>
+        <div class="kpi-sub">{{ kpi.unpaid_invoices }} non soldées</div>
+        <i class="bi bi-file-earmark-text kpi-icon"></i>
+    </div>
+
+    <div class="kpi-card kpi-secondary">
+        <div class="kpi-value">{{ kpi.total_revenue|floatformat:0 }} €</div>
+        <div class="kpi-label">CA encaissé</div>
+        <div class="kpi-sub">Cumul des paiements</div>
+        <i class="bi bi-cash-coin kpi-icon"></i>
+    </div>
+
+    <div class="kpi-card kpi-danger">
+        <div class="kpi-value">{{ kpi.overdue_invoices }}</div>
+        <div class="kpi-label">Factures en retard</div>
+        <div class="kpi-sub">À relancer</div>
+        <i class="bi bi-exclamation-triangle kpi-icon"></i>
+    </div>
+
+    <div class="kpi-card kpi-warning">
+        <div class="kpi-value">{{ kpi.low_stock }}</div>
+        <div class="kpi-label">Stock faible</div>
+        <div class="kpi-sub">Sous le seuil</div>
+        <i class="bi bi-box-seam kpi-icon"></i>
+    </div>
+</div>
+
+<div class="ab-row">
+    <div class="ab-card">
+        <div class="ab-card-header">
+            <h2>Activité récente</h2>
+            <a class="ab-link" href="{% url 'admin:invoice_app_auditlog_changelist' %}">Tout voir</a>
+        </div>
+        <div class="ab-card-body" style="padding:0;">
+            {% admin_recent_audit 6 as recent %}
+            {% if recent %}
+            <table class="ab-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Action</th>
+                        <th>Modèle</th>
+                        <th>Objet</th>
+                        <th>Utilisateur</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in recent %}
+                    <tr>
+                        <td class="ab-text-faint">{{ log.timestamp|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            {% if log.action == 'create' %}<span class="ab-badge ab-badge-success">Création</span>
+                            {% elif log.action == 'update' %}<span class="ab-badge ab-badge-info">Modification</span>
+                            {% elif log.action == 'delete' %}<span class="ab-badge ab-badge-danger">Suppression</span>
+                            {% else %}<span class="ab-badge ab-badge-muted">{{ log.get_action_display }}</span>{% endif %}
+                        </td>
+                        <td>{{ log.get_model_display }}</td>
+                        <td class="ab-text-strong">{{ log.object_str|default:"—" }}</td>
+                        <td class="ab-text-faint">{{ log.user|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="ab-empty">Aucune activité enregistrée pour le moment.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="ab-card">
+        <div class="ab-card-header">
+            <h2>Alertes système</h2>
+        </div>
+        <div class="ab-card-body">
+            <ul class="ab-alerts">
+                <li>
+                    <span class="ab-badge ab-badge-danger">{{ kpi.overdue_invoices }}</span>
+                    <span>Facture(s) en retard détectée(s)</span>
+                </li>
+                <li>
+                    <span class="ab-badge ab-badge-warning">{{ kpi.low_stock }}</span>
+                    <span>Produit(s) en stock faible</span>
+                </li>
+                <li>
+                    <span class="ab-badge ab-badge-info">{{ kpi.unpaid_invoices }}</span>
+                    <span>Facture(s) en attente de paiement</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="ab-card">
+    <div class="ab-card-header">
+        <h2>Actions rapides</h2>
+    </div>
+    <div class="ab-card-body">
+        <div class="ab-quick">
+            <a href="{% url 'admin:auth_user_add' %}"><i class="bi bi-person-add"></i> Nouvel utilisateur</a>
+            <a href="{% url 'admin:auth_group_add' %}"><i class="bi bi-people"></i> Nouveau rôle</a>
+            <a href="{% url 'admin:invoice_app_companyinfo_changelist' %}"><i class="bi bi-building"></i> Informations entreprise</a>
+            <a href="{% url 'admin:invoice_app_auditlog_changelist' %}"><i class="bi bi-journal-text"></i> Journaux d'audit</a>
+            <a href="{% url 'admin:system_panel' %}"><i class="bi bi-gear"></i> Maintenance &amp; exports</a>
+            <a href="/"><i class="bi bi-box-arrow-left"></i> Espace comptable</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

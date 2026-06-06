@@ -4,9 +4,13 @@ Django settings for invoice_project project.
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file
+load_dotenv(BASE_DIR / '.env', encoding='utf-8', override=True)
 
 
 def env_bool(name, default='False'):
@@ -58,6 +62,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'invoice_app.middleware.CurrentRequestMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -75,7 +80,11 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'invoice_app.context_processors.notifications_context',
             ],
+            'libraries': {
+                'admin_extras': 'invoice_app.templatetags.admin_extras',
+            },
         },
     },
 ]
@@ -85,8 +94,15 @@ WSGI_APPLICATION = 'invoice_project.wsgi.application'
 # Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': os.getenv('DB_NAME', 'facturation_db'),
+        'USER': os.getenv('DB_USER', 'root'),
+        'PASSWORD': os.getenv('DB_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '3306'),
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        }
     }
 }
 
@@ -194,15 +210,6 @@ SERVER_EMAIL = os.getenv('SERVER_EMAIL', 'server@facturation.com')
 # Email configuration constants
 EMAIL_SUBJECT_PREFIX = '[FacturationApp] '
 EMAIL_FROM_NAME = 'FacturationApp'
-
-# AI Assistant configuration
-AI_CHAT_ENABLED = env_bool('AI_CHAT_ENABLED', 'True')
-AI_PROVIDER = os.getenv('AI_PROVIDER', 'local').strip().lower()
-AI_API_BASE = os.getenv('AI_API_BASE', 'https://api.openai.com/v1/chat/completions')
-AI_API_KEY = os.getenv('AI_API_KEY', '')
-AI_MODEL = os.getenv('AI_MODEL', 'gpt-4o-mini')
-AI_TEMPERATURE = float(os.getenv('AI_TEMPERATURE', '0.4'))
-AI_MAX_TOKENS = int(os.getenv('AI_MAX_TOKENS', '300'))
 
 # Authentication redirects
 LOGIN_URL = '/accounts/login/'

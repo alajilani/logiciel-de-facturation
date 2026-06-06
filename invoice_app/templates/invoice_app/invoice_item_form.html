@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Modifier une ligne de facture{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">Modifier une ligne - {{ invoice.invoice_number }}</h1>
+
+    <div class="card">
+        <div class="card-header"><h5 class="mb-0">Ligne de facture</h5></div>
+        <div class="card-body">
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Produit/Service</label>
+                        {{ form.produit_service }}
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label">Description</label>
+                        {{ form.description }}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Unité</label>
+                        {{ form.unite }}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Quantité</label>
+                        {{ form.quantite }}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Prix U. HT</label>
+                        {{ form.prix_unitaire_ht }}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">TVA %</label>
+                        {{ form.taux_tva }}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Remise %</label>
+                        {{ form.remise_pourcentage }}
+                    </div>
+                </div>
+                <div class="mt-4 d-flex gap-2">
+                    <a href="{% url 'invoice-update' invoice.id %}" class="btn btn-secondary">Annuler</a>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

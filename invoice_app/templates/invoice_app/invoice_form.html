@@ -1,58 +1,243 @@
 {% extends "base.html" %}
 
-{% block title %}Ajouter une facture{% endblock %}
+{% block title %}Nouvelle facture{% endblock %}
+
+{% block extra_css %}
+<style>
+    .inv-shell { max-width: 920px; }
+    .inv-page-head {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 18px;
+    }
+    .inv-page-head h1 {
+        font-size: 1.35rem; font-weight: 600; color: #0f172a; margin: 0;
+        letter-spacing: -0.01em;
+    }
+    .inv-page-head .inv-sub {
+        font-size: 0.82rem; color: #64748b; margin-top: 2px;
+    }
+    .inv-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        overflow: hidden;
+    }
+    .inv-card-head {
+        padding: 14px 20px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .inv-card-head .inv-step {
+        width: 22px; height: 22px; border-radius: 50%;
+        background: #eef0ff; color: #4f46e5;
+        font-size: 0.72rem; font-weight: 600;
+        display: inline-flex; align-items: center; justify-content: center;
+    }
+    .inv-card-head .inv-title {
+        font-size: 0.82rem; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.06em;
+        color: #475569;
+    }
+    .inv-card-body { padding: 20px; }
+
+    .inv-field-label {
+        display: block;
+        font-size: 0.72rem; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.06em;
+        color: #64748b; margin-bottom: 6px;
+    }
+    .inv-field-label .req { color: #6366f1; margin-left: 2px; }
+    .inv-field-hint {
+        font-size: 0.72rem; color: #94a3b8; font-style: italic; font-weight: 500;
+    }
+
+    .inv-card-body .form-control,
+    .inv-card-body .form-select,
+    .inv-card-body select.form-control {
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        font-size: 0.88rem;
+        padding: 0.5rem 0.7rem;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .inv-card-body .form-control:focus,
+    .inv-card-body .form-select:focus,
+    .inv-card-body select.form-control:focus {
+        border-color: #a5b4fc;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+        outline: none;
+    }
+
+    .inv-actions {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-top: 20px;
+    }
+    .inv-btn-cancel {
+        color: #64748b; text-decoration: none; font-size: 0.88rem; font-weight: 500;
+        padding: 0.5rem 0.85rem; border-radius: 8px;
+    }
+    .inv-btn-cancel:hover { background: #f4f5f9; color: #334155; }
+    .inv-btn-primary {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        border: none; color: #fff;
+        font-size: 0.88rem; font-weight: 600;
+        padding: 0.55rem 1.1rem; border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(99, 102, 241, 0.25);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .inv-btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+        color: #fff;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <h1 class="mb-4"><i class="bi bi-plus-circle"></i> Créer une nouvelle facture</h1>
-    
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">Informations de base</h5>
+<div class="container-fluid inv-shell">
+    <div class="inv-page-head">
+        <div>
+            <h1>Nouvelle facture</h1>
+            <div class="inv-sub">Renseignez les informations de base — vous ajouterez les lignes à l'étape suivante.</div>
         </div>
-        <div class="card-body">
-            <form method="post" novalidate>
-                {% csrf_token %}
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Client *</label>
+    </div>
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="inv-card">
+            <div class="inv-card-head">
+                <span class="inv-step">1</span>
+                <span class="inv-title">Informations facture</span>
+            </div>
+            <div class="inv-card-body">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="inv-field-label">Client <span class="req">*</span></label>
                         {{ form.client }}
-                        {% if form.client.errors %}
-                            <div class="text-danger">{{ form.client.errors }}</div>
-                        {% endif %}
+                        {% if form.client.errors %}<div class="text-danger small mt-1">{{ form.client.errors|striptags }}</div>{% endif %}
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Méthode de paiement</label>
+                    <div class="col-md-4">
+                        <label class="inv-field-label">Mode de règlement prévu</label>
                         {{ form.payment_method }}
                     </div>
                 </div>
-                
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Date</label>
+
+                <div class="row g-3 mt-1">
+                    <div class="col-md-6">
+                        <label class="inv-field-label">Date facture</label>
                         {{ form.date }}
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Date d'échéance</label>
+                    <div class="col-md-6">
+                        <label class="inv-field-label d-flex align-items-center justify-content-between">
+                            <span>Date d'échéance</span>
+                            <small id="due-date-hint" class="inv-field-hint"></small>
+                        </label>
                         {{ form.due_date }}
                     </div>
                 </div>
-                
-                <div class="d-flex justify-content-between">
-                    <a href="{% url 'invoice-list' %}" class="btn btn-secondary">
-                        <i class="bi bi-x-circle"></i> Annuler
-                    </a>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-circle"></i> Créer la facture
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
 
-    <div class="alert alert-info mt-4">
-        <i class="bi bi-info-circle"></i> 
-        Après création, vous pourrez ajouter les articles et les détails de facturation.
-    </div>
+                <div class="row g-3 mt-1">
+                    <div class="col-12">
+                        <label class="inv-field-label">Notes facture</label>
+                        {{ form.notes }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="inv-actions">
+            <a href="{% url 'invoice-list' %}" class="inv-btn-cancel">
+                <i class="bi bi-arrow-left"></i> Annuler
+            </a>
+            <button type="submit" class="inv-btn-primary">
+                Continuer <i class="bi bi-arrow-right ms-1"></i>
+            </button>
+        </div>
+    </form>
 </div>
+
+{{ client_conditions_map|json_script:"client-conditions-data" }}
+
+<script>
+(function () {
+    'use strict';
+
+    const dataEl = document.getElementById('client-conditions-data');
+    if (!dataEl) return;
+    let conditionsMap = {};
+    try { conditionsMap = JSON.parse(dataEl.textContent || '{}'); } catch (e) { return; }
+
+    const clientField  = document.getElementById('id_client');
+    const dateField    = document.getElementById('id_date');
+    const dueDateField = document.getElementById('id_due_date');
+    const hint         = document.getElementById('due-date-hint');
+    if (!clientField || !dateField || !dueDateField) return;
+
+    // On the CREATE form, due_date starts empty — any value comes from us.
+    // Becomes true only when the user manually edits the field after our compute.
+    let dueIsManual = false;
+    let suppressNextDirty = false;
+
+    function conditionToDays(cond) {
+        if (!cond) return null;
+        const c = String(cond).toUpperCase();
+        if (c === 'IMMEDIAT') return 0;
+        const m = c.match(/^(\d+)_JOURS$/);
+        return m ? parseInt(m[1], 10) : null;
+    }
+    function conditionLabel(cond) {
+        const d = conditionToDays(cond);
+        if (d === null) return '';
+        return d === 0 ? 'Paiement immédiat' : '+ ' + d + ' jours';
+    }
+    function addDaysISO(isoDate, days) {
+        const p = isoDate.split('-');
+        if (p.length !== 3) return '';
+        const d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+        d.setUTCDate(d.getUTCDate() + days);
+        const yyyy = d.getUTCFullYear();
+        const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const dd = String(d.getUTCDate()).padStart(2, '0');
+        return yyyy + '-' + mm + '-' + dd;
+    }
+    function setDue(iso) {
+        suppressNextDirty = true;
+        if (dueDateField._flatpickr) {
+            dueDateField._flatpickr.setDate(iso, true);
+        } else {
+            dueDateField.value = iso;
+        }
+    }
+    function recompute(opts) {
+        // opts.force = true  -> always overwrite (client change)
+        // opts.force = false -> respect manual edits
+        const force = !!(opts && opts.force);
+        const clientId = clientField.value;
+        const baseDate = dateField.value;
+        if (!clientId || !baseDate) { if (hint) hint.textContent = ''; return; }
+        const cond = conditionsMap[clientId];
+        const days = conditionToDays(cond);
+        if (hint) hint.textContent = conditionLabel(cond);
+        if (days === null) return;
+        if (!force && dueIsManual) return;
+        const iso = addDaysISO(baseDate, days);
+        if (iso) setDue(iso);
+        if (force) dueIsManual = false; // client change resets manual override
+    }
+
+    clientField.addEventListener('change', function () { recompute({ force: true }); });
+    dateField.addEventListener('change', function () { recompute({ force: false }); });
+    dateField.addEventListener('input',  function () { recompute({ force: false }); });
+
+    // Mark manual edit when user changes due_date by hand (after our setDue, we suppress one event).
+    dueDateField.addEventListener('change', function () {
+        if (suppressNextDirty) { suppressNextDirty = false; return; }
+        dueIsManual = true;
+    });
+
+    // Initial run: only if due_date currently empty (typical for fresh create form).
+    if (!dueDateField.value) recompute({ force: false });
+})();
+</script>
 {% endblock %}

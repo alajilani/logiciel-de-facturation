@@ -5,7 +5,7 @@
 {% block content %}
 <div class="container mt-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>📋 Devis</h1>
+        <h1>Devis</h1>
         <a href="{% url 'quote-create' %}" class="btn btn-primary btn-lg">+ Créer un devis</a>
     </div>
 
@@ -51,7 +51,7 @@
                 {% for quote in quotes %}
                 <tr>
                     <td><strong>{{ quote.quote_number }}</strong></td>
-                    <td>{{ quote.client.name }}</td>
+                    <td>{{ quote.client.nom }}</td>
                     <td>{{ quote.date|date:'d/m/Y' }}</td>
                     <td>
                         {{ quote.validity_date|date:'d/m/Y' }}
@@ -77,10 +77,10 @@
                     </td>
                     <td>
                         <div class="btn-group btn-group-sm" role="group">
-                            <a href="{% url 'quote-detail' quote.id %}" class="btn btn-info" title="Voir">👁️</a>
-                            <a href="{% url 'quote-update' quote.id %}" class="btn btn-warning" title="Modifier">✏️</a>
-                            <a href="{% url 'export-quote-pdf' quote.id %}" class="btn btn-success" title="PDF">📄</a>
-                            <a href="{% url 'quote-delete' quote.id %}" class="btn btn-danger" title="Supprimer">🗑️</a>
+                            <a href="{% url 'quote-detail' quote.id %}" class="btn btn-info" title="Voir"><i class="bi bi-eye"></i></a>
+                            <a href="{% url 'quote-update' quote.id %}" class="btn btn-warning" title="Modifier"><i class="bi bi-pencil"></i></a>
+                            <a href="{% url 'export-quote-pdf' quote.id %}" class="btn btn-success" title="PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+                            <a href="{% url 'quote-delete' quote.id %}" class="btn btn-danger" title="Supprimer"><i class="bi bi-trash"></i></a>
                         </div>
                     </td>
                 </tr>

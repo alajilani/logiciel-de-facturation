@@ -1,0 +1,216 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'admin/css/admin_custom.css' %}">
+  <link rel="stylesheet" href="{% static 'admin/css/company_settings.css' %}">
+{% endblock %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block content_title %}{% endblock %}
+
+{% block content %}
+{% with obj=original form=adminform.form %}
+<div class="ab-settings-wrap">
+
+  {# ===== En-tête ===== #}
+  <div class="ab-page-header">
+    <div>
+      <h1 class="ab-page-title">Informations entreprise
+      </h1>
+      <p class="ab-page-sub">
+        Ces informations apparaissent sur vos factures, devis et e-mails.
+      </p>
+    </div>
+    <a href="{% url 'admin:index' %}" class="ab-btn ab-btn-secondary">
+      <i class="bi bi-arrow-left"></i> Retour au tableau de bord
+    </a>
+  </div>
+
+  {# ===== Aperçu entreprise ===== #}
+  {% if obj %}
+  <div class="ab-card ab-company-preview">
+    <div class="ab-company-preview__logo">
+      {% if obj.logo %}
+        <img src="{{ obj.logo.url }}" alt="Logo {{ obj.name }}">
+      {% else %}
+        <div class="ab-logo-placeholder">
+          <i class="bi bi-image"></i>
+          <span>Aucun logo</span>
+        </div>
+      {% endif %}
+    </div>
+    <div class="ab-company-preview__info">
+      <h2>{{ obj.name|default:"Nom de l'entreprise" }}</h2>
+      <ul class="ab-company-preview__list">
+        {% if obj.address or obj.postal_code or obj.city %}
+        <li>
+          <i class="bi bi-geo-alt"></i>
+          <span>
+            {% if obj.address %}{{ obj.address }}{% endif %}
+            {% if obj.postal_code or obj.city %}
+              <br>{{ obj.postal_code }} {{ obj.city }}
+            {% endif %}
+            {% if obj.country %} — {{ obj.country }}{% endif %}
+          </span>
+        </li>
+        {% endif %}
+        {% if obj.email %}
+        <li><i class="bi bi-envelope"></i> <a href="mailto:{{ obj.email }}">{{ obj.email }}</a></li>
+        {% endif %}
+        {% if obj.phone %}
+        <li><i class="bi bi-telephone"></i> <span class="ab-phone">{{ obj.phone }}</span></li>
+        {% endif %}
+        {% if obj.website %}
+        <li><i class="bi bi-globe"></i> <a href="{{ obj.website }}" target="_blank" rel="noopener">{{ obj.website }}</a></li>
+        {% endif %}
+        {% if obj.siret %}<li><i class="bi bi-hash"></i> SIRET : <strong>{{ obj.siret }}</strong></li>{% endif %}
+        {% if obj.siren %}<li><i class="bi bi-hash"></i> SIREN : <strong>{{ obj.siren }}</strong></li>{% endif %}
+        {% if obj.tva_number %}<li><i class="bi bi-receipt"></i> TVA : <strong>{{ obj.tva_number }}</strong></li>{% endif %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ===== Erreurs globales ===== #}
+  {% if form.non_field_errors %}
+    <div class="ab-alert ab-alert-danger">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+
+    {# Champs cachés #}
+    {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+
+    <div class="ab-grid-2">
+
+      {# ---- Identité ---- #}
+      <div class="ab-card">
+        <div class="ab-card-header"><h3>Identité</h3>
+        </div>
+        <div class="ab-card-body">
+          {% include "admin/invoice_app/companyinfo/_field.html" with field=form.name %}
+
+          {# Widget logo personnalisé #}
+          <div class="ab-field">
+            <label>Logo de l'entreprise</label>
+            <div class="ab-logo-widget">
+              <div class="ab-logo-widget__preview">
+                {% if obj.logo %}
+                  <img id="ab-logo-preview" src="{{ obj.logo.url }}" alt="Logo">
+                {% else %}
+                  <div id="ab-logo-preview-empty" class="ab-logo-placeholder">
+                    <i class="bi bi-image"></i>
+                    <span>Aucun logo</span>
+                  </div>
+                  <img id="ab-logo-preview" src="" alt="" style="display:none;">
+                {% endif %}
+              </div>
+              <div class="ab-logo-widget__actions">
+                <label for="{{ form.logo.id_for_label }}" class="ab-btn ab-btn-secondary">
+                  <i class="bi bi-upload"></i> Changer le logo
+                </label>
+                {% if obj.logo %}
+                <label class="ab-btn ab-btn-danger-soft" for="logo-clear_id">
+                  <i class="bi bi-trash"></i> Supprimer le logo
+                </label>
+                {% endif %}
+              </div>
+              <div class="ab-logo-widget__raw">
+                {{ form.logo }}
+              </div>
+              {% if form.logo.errors %}<div class="ab-field-error">{{ form.logo.errors }}</div>{% endif %}
+            </div>
+          </div>
+
+          {% include "admin/invoice_app/companyinfo/_field.html" with field=form.country %}
+          {% include "admin/invoice_app/companyinfo/_field.html" with field=form.currency %}
+        </div>
+      </div>
+
+      {# ---- Coordonnées ---- #}
+      <div class="ab-card">
+        <div class="ab-card-header"><h3>Coordonnées</h3>
+        </div>
+        <div class="ab-card-body">
+          {% include "admin/invoice_app/companyinfo/_field.html" with field=form.address %}
+          <div class="ab-row-2">
+            {% include "admin/invoice_app/companyinfo/_field.html" with field=form.postal_code %}
+            {% include "admin/invoice_app/companyinfo/_field.html" with field=form.city %}
+          </div>
+          {% include "admin/invoice_app/companyinfo/_field.html" with field=form.phone %}
+          {% include "admin/invoice_app/companyinfo/_field.html" with field=form.email %}
+          {% include "admin/invoice_app/companyinfo/_field.html" with field=form.website %}
+        </div>
+      </div>
+
+      {# ---- Fiscalité ---- #}
+      <div class="ab-card">
+        <div class="ab-card-header"><h3>Informations fiscales</h3>
+        </div>
+        <div class="ab-card-body">
+          {% include "admin/invoice_app/companyinfo/_field.html" with field=form.siret %}
+          {% include "admin/invoice_app/companyinfo/_field.html" with field=form.siren %}
+          {% include "admin/invoice_app/companyinfo/_field.html" with field=form.tva_number %}
+        </div>
+      </div>
+
+      {# ---- Paramètres facturation ---- #}
+      <div class="ab-card">
+        <div class="ab-card-header"><h3>Paramètres de facturation</h3>
+        </div>
+        <div class="ab-card-body">
+          {% include "admin/invoice_app/companyinfo/_field.html" with field=form.invoice_prefix %}
+          {% include "admin/invoice_app/companyinfo/_field.html" with field=form.default_tva %}
+          {% include "admin/invoice_app/companyinfo/_field.html" with field=form.default_payment_terms %}
+          {% include "admin/invoice_app/companyinfo/_field.html" with field=form.default_legal_mentions %}
+        </div>
+      </div>
+
+    </div>
+
+    {# ===== Barre d'actions ===== #}
+    <div class="ab-actions-bar">
+      <a href="{% url 'admin:index' %}" class="ab-btn ab-btn-secondary">
+        <i class="bi bi-arrow-left"></i> Retour au tableau de bord
+      </a>
+      <button type="submit" name="_save" class="ab-btn ab-btn-primary">
+        <i class="bi bi-check2-circle"></i> Enregistrer les modifications
+      </button>
+    </div>
+  </form>
+</div>
+
+{# JS : prévisualisation du logo + masquer le champ "Effacer" natif tout en gardant son fonctionnement #}
+<script>
+(function() {
+  var input = document.getElementById('{{ form.logo.id_for_label }}');
+  var preview = document.getElementById('ab-logo-preview');
+  var empty = document.getElementById('ab-logo-preview-empty');
+  if (input && preview) {
+    input.addEventListener('change', function(e) {
+      var file = e.target.files && e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        preview.src = ev.target.result;
+        preview.style.display = '';
+        if (empty) empty.style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  // Formatage visuel du téléphone dans l'aperçu (groupes de 2)
+  document.querySelectorAll('.ab-phone').forEach(function(el){
+    var raw = el.textContent.replace(/\D/g, '');
+    if (raw.length >= 8) {
+      el.textContent = raw.match(/.{1,2}/g).join(' ');
+    }
+  });
+})();
+</script>
+{% endwith %}
+{% endblock %}

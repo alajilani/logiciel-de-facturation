@@ -2,142 +2,433 @@ from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from datetime import datetime, timedelta
+from django.utils import timezone
 
 class Client(models.Model):
-    """Client model"""
-    name = models.CharField(max_length=255, verbose_name="Nom du client")
+    """Client model - Professional invoice management"""
+    
+    # Type de client
+    TYPE_CLIENT_CHOICES = [
+        ('PARTICULIER', 'Particulier'),
+        ('ENTREPRISE', 'Entreprise'),
+    ]
+    
+    # Conditions de paiement
+    CONDITIONS_PAIEMENT_CHOICES = [
+        ('IMMEDIAT', 'Paiement immédiat'),
+        ('15_JOURS', '15 jours'),
+        ('30_JOURS', '30 jours'),
+    ]
+    
+    # Statut du client
+    STATUT_CHOICES = [
+        ('ACTIF', 'Actif'),
+        ('INACTIF', 'Inactif'),
+    ]
+    
+    # Informations générales
+    type_client = models.CharField(
+        max_length=20, 
+        choices=TYPE_CLIENT_CHOICES, 
+        default='PARTICULIER',
+        verbose_name="Type de client"
+    )
+    nom = models.CharField(max_length=255, verbose_name="Nom")
+    raison_sociale = models.CharField(
+        max_length=255, 
+        blank=True, 
+        null=True, 
+        verbose_name="Raison sociale"
+    )
+    contact_principal = models.CharField(
+        max_length=255, 
+        blank=True, 
+        null=True, 
+        verbose_name="Contact principal"
+    )
     email = models.EmailField(blank=True, null=True)
-    phone = models.CharField(max_length=20, blank=True, null=True)
-    delivery_address = models.TextField(blank=True, null=True, verbose_name="Adresse de livraison")
-    billing_address = models.TextField(blank=True, null=True, verbose_name="Adresse de facturation")
-    country = models.CharField(max_length=100, default="France", verbose_name="Pays")
-    tva_intra = models.CharField(max_length=50, blank=True, null=True, verbose_name="Numéro TVA Intracommunautaire")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    telephone = models.CharField(max_length=20, blank=True, null=True)
+    
+    # Adresse de facturation
+    adresse_facturation = models.TextField(verbose_name="Adresse de facturation")
+    code_postal_facturation = models.CharField(max_length=10, verbose_name="Code postal")
+    ville_facturation = models.CharField(max_length=100, verbose_name="Ville")
+    pays_facturation = models.CharField(
+        max_length=100, 
+        default="France", 
+        verbose_name="Pays"
+    )
+    
+    # Adresse de livraison
+    adresse_livraison = models.TextField(
+        blank=True, 
+        null=True, 
+        verbose_name="Adresse de livraison"
+    )
+    code_postal_livraison = models.CharField(
+        max_length=10, 
+        blank=True, 
+        null=True, 
+        verbose_name="Code postal (livraison)"
+    )
+    ville_livraison = models.CharField(
+        max_length=100, 
+        blank=True, 
+        null=True, 
+        verbose_name="Ville (livraison)"
+    )
+    pays_livraison = models.CharField(
+        max_length=100, 
+        blank=True, 
+        null=True, 
+        verbose_name="Pays (livraison)"
+    )
+    livraison_identique_facturation = models.BooleanField(
+        default=True, 
+        verbose_name="Livraison identique à facturation"
+    )
+    
+    # Informations fiscales
+    numero_tva_intracommunautaire = models.CharField(
+        max_length=50, 
+        blank=True, 
+        null=True, 
+        verbose_name="Numéro TVA intracommunautaire"
+    )
+    siret_siren = models.CharField(
+        max_length=50, 
+        blank=True, 
+        null=True, 
+        verbose_name="SIRET/SIREN"
+    )
+    
+    # Gestion
+    conditions_paiement = models.CharField(
+        max_length=20, 
+        choices=CONDITIONS_PAIEMENT_CHOICES, 
+        default='30_JOURS',
+        verbose_name="Conditions de paiement"
+    )
+    statut = models.CharField(
+        max_length=20, 
+        choices=STATUT_CHOICES, 
+        default='ACTIF',
+        verbose_name="Statut"
+    )
+    notes_internes = models.TextField(
+        blank=True, 
+        null=True, 
+        verbose_name="Notes internes"
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Modifié le")
     
     class Meta:
         verbose_name = "Client"
         verbose_name_plural = "Clients"
-        ordering = ['name']
+        ordering = ['nom']
+        indexes = [
+            models.Index(fields=['statut']),
+            models.Index(fields=['type_client']),
+        ]
     
     def __str__(self):
-        return self.name
+        return f"{self.nom} ({self.get_type_client_display()})"
+    
+    def save(self, *args, **kwargs):
+        """Override save to handle address synchronization"""
+        if self.livraison_identique_facturation:
+            self.adresse_livraison = self.adresse_facturation
+            self.code_postal_livraison = self.code_postal_facturation
+            self.ville_livraison = self.ville_facturation
+            self.pays_livraison = self.pays_facturation
+        super().save(*args, **kwargs)
+    
+    @property
+    def adresse_complete_facturation(self):
+        """Complete billing address"""
+        parts = [
+            self.adresse_facturation,
+            f"{self.code_postal_facturation} {self.ville_facturation}",
+            self.pays_facturation
+        ]
+        return "\n".join(filter(None, parts))
+    
+    @property
+    def adresse_complete_livraison(self):
+        """Complete delivery address"""
+        if self.livraison_identique_facturation:
+            return self.adresse_complete_facturation
+        parts = [
+            self.adresse_livraison,
+            f"{self.code_postal_livraison} {self.ville_livraison}",
+            self.pays_livraison
+        ]
+        return "\n".join(filter(None, parts))
+    
+    def is_active(self):
+        """Check if client is active"""
+        return self.statut == 'ACTIF'
 
 
 class Product(models.Model):
-    """Product model"""
-    name = models.CharField(max_length=255, verbose_name="Nom du produit")
-    price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)], verbose_name="Prix")
-    reference = models.CharField(max_length=100, unique=True, verbose_name="Référence")
+    """Product / Service model with business rules
+
+    - name : obligatoire
+    - reference : unique si renseignée
+    - type_item : PRODUIT ou SERVICE
+    - categorie
+    - description
+    - prix_unitaire_ht
+    - taux_tva
+    - unite : PIECE, HEURE, JOUR, FORFAIT
+    - suivre_stock
+    - stock
+    - seuil_alerte
+    - statut : ACTIF / INACTIF
+    """
+    TYPE_ITEM_CHOICES = [
+        ('PRODUIT', 'Produit'),
+        ('SERVICE', 'Service'),
+    ]
+
+    UNITE_CHOICES = [
+        ('PIECE', 'Pièce'),
+        ('HEURE', 'Heure'),
+        ('JOUR', 'Jour'),
+        ('FORFAIT', 'Forfait'),
+    ]
+
+    STATUT_CHOICES = [
+        ('ACTIF', 'Actif'),
+        ('INACTIF', 'Inactif'),
+    ]
+
+    name = models.CharField(max_length=255, verbose_name="Nom")
+    reference = models.CharField(max_length=100, blank=True, null=True, unique=True, verbose_name="Référence")
+    type_item = models.CharField(max_length=10, choices=TYPE_ITEM_CHOICES, default='PRODUIT', verbose_name="Type")
+    categorie = models.ForeignKey('CategorieProduit', on_delete=models.SET_NULL, blank=True, null=True, related_name='produits', verbose_name="Catégorie")
     description = models.TextField(blank=True, null=True, verbose_name="Description")
-    stock_quantity = models.IntegerField(default=0, validators=[MinValueValidator(0)], verbose_name="Stock")
-    low_stock_threshold = models.IntegerField(default=5, validators=[MinValueValidator(0)], verbose_name="Seuil d'alerte")
-    track_stock = models.BooleanField(default=True, verbose_name="Suivre le stock")
+    prix_unitaire_ht = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(0)], default=0, verbose_name="Prix unitaire HT")
+    prix_unitaire_ttc = models.DecimalField(max_digits=12, decimal_places=2, default=0, editable=False, verbose_name="Prix unitaire TTC")
+    taux_tva = models.DecimalField(max_digits=5, decimal_places=2, default=20.00, verbose_name="Taux TVA")
+    unite = models.CharField(max_length=10, choices=UNITE_CHOICES, default='PIECE', verbose_name="Unité")
+    suivre_stock = models.BooleanField(default=True, verbose_name="Suivre le stock")
+    stock = models.IntegerField(default=0, validators=[MinValueValidator(0)], verbose_name="Stock")
+    seuil_alerte = models.IntegerField(default=5, validators=[MinValueValidator(0)], verbose_name="Seuil d'alerte")
+    disponible_vente = models.BooleanField(default=True, verbose_name="Disponible à la vente")
+    derniere_modification_prix = models.DateTimeField(blank=True, null=True, verbose_name="Dernière modification du prix")
+    statut = models.CharField(max_length=10, choices=STATUT_CHOICES, default='ACTIF', verbose_name="Statut")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
-        verbose_name = "Produit"
-        verbose_name_plural = "Produits"
+        verbose_name = "Produit / Service"
+        verbose_name_plural = "Produits / Services"
         ordering = ['name']
-    
+
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.get_type_item_display()})"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if float(self.prix_unitaire_ht or 0) < 0:
+            raise ValidationError({'prix_unitaire_ht': 'Le prix unitaire HT doit être supérieur ou égal à 0.'})
+        if float(self.stock or 0) < 0:
+            raise ValidationError({'stock': 'Le stock doit être supérieur ou égal à 0.'})
+        if float(self.taux_tva or 0) < 0 or float(self.taux_tva or 0) > 100:
+            raise ValidationError({'taux_tva': 'Le taux de TVA doit être entre 0 et 100.'})
+
+        # Un service ne gère jamais le stock.
+        if self.type_item == 'SERVICE':
+            self.suivre_stock = False
+            self.stock = 0
+            self.seuil_alerte = 0
+        elif not self.suivre_stock:
+            self.stock = 0
+            self.seuil_alerte = 0
+
+    def calculate_prix_ttc(self):
+        from decimal import Decimal, ROUND_HALF_UP
+        prix_ht = Decimal(str(self.prix_unitaire_ht or 0))
+        taux = Decimal(str(self.taux_tva or 0))
+        tva = (prix_ht * taux / Decimal('100')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        self.prix_unitaire_ttc = (prix_ht + tva).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+    def _generate_reference(self):
+        year = timezone.now().year
+        prefix = f"PRD-{year}-"
+        latest = Product.objects.filter(reference__startswith=prefix).order_by('-reference').first()
+        if latest and latest.reference:
+            try:
+                seq = int(latest.reference.split('-')[-1]) + 1
+            except (TypeError, ValueError):
+                seq = 1
+        else:
+            seq = 1
+        return f"{prefix}{seq:04d}"
 
     @property
-    def is_low_stock(self):
-        return self.track_stock and self.stock_quantity <= self.low_stock_threshold
+    def is_stock_faible(self):
+        """Return True when stock is at or below the alert threshold."""
+        return self.type_item == 'PRODUIT' and self.suivre_stock and self.stock <= self.seuil_alerte
 
     def can_allocate(self, quantity):
-        if not self.track_stock:
+        """Check if the requested quantity can be allocated from stock."""
+        if not self.disponible_vente:
+            return False
+        if self.type_item == 'SERVICE' or not self.suivre_stock:
             return True
-        return self.stock_quantity >= quantity
+        return self.stock >= quantity
 
     def decrease_stock(self, quantity):
-        if not self.track_stock:
+        """Decrease stock when an order/invoice is validated."""
+        if self.type_item == 'SERVICE' or not self.suivre_stock:
             return
-        self.stock_quantity = max(0, self.stock_quantity - quantity)
-        self.save(update_fields=['stock_quantity', 'updated_at'])
+        self.stock = max(0, self.stock - int(quantity))
+        self.save(update_fields=['stock', 'updated_at'])
 
     def increase_stock(self, quantity):
-        if not self.track_stock:
+        if self.type_item == 'SERVICE' or not self.suivre_stock:
             return
-        self.stock_quantity += quantity
-        self.save(update_fields=['stock_quantity', 'updated_at'])
+        self.stock = self.stock + int(quantity)
+        self.save(update_fields=['stock', 'updated_at'])
+
+    def save(self, *args, **kwargs):
+        old_price = None
+        if self.pk:
+            old_price = Product.objects.filter(pk=self.pk).values_list('prix_unitaire_ht', flat=True).first()
+
+        if not self.reference:
+            self.reference = self._generate_reference()
+
+        self.clean()
+        self.calculate_prix_ttc()
+
+        if old_price is not None and old_price != self.prix_unitaire_ht:
+            self.derniere_modification_prix = timezone.now()
+        elif old_price is None and self.prix_unitaire_ht is not None:
+            self.derniere_modification_prix = timezone.now()
+
+        super().save(*args, **kwargs)
+
+
+class CategorieProduit(models.Model):
+    """Catégorie métier pour produits et services."""
+    STATUT_CHOICES = [
+        ('ACTIF', 'Actif'),
+        ('INACTIF', 'Inactif'),
+    ]
+
+    nom = models.CharField(max_length=120, unique=True, verbose_name="Nom")
+    description = models.TextField(blank=True, null=True, verbose_name="Description")
+    statut = models.CharField(max_length=10, choices=STATUT_CHOICES, default='ACTIF', verbose_name="Statut")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Catégorie produit/service"
+        verbose_name_plural = "Catégories produit/service"
+        ordering = ['nom']
+
+    def __str__(self):
+        return self.nom
 
 
 class CompanyInfo(models.Model):
     """Company information model"""
     name = models.CharField(max_length=255, verbose_name="Nom de l'entreprise")
     address = models.TextField(blank=True, null=True, verbose_name="Adresse")
-    phone = models.CharField(max_length=20, blank=True, null=True)
-    email = models.EmailField(blank=True, null=True)
-    website = models.URLField(blank=True, null=True)
+    postal_code = models.CharField(max_length=20, blank=True, null=True, verbose_name="Code postal")
+    city = models.CharField(max_length=100, blank=True, null=True, verbose_name="Ville")
+    phone = models.CharField(max_length=20, blank=True, null=True, verbose_name="Téléphone")
+    email = models.EmailField(blank=True, null=True, verbose_name="Adresse email")
+    website = models.URLField(blank=True, null=True, verbose_name="Site web")
     siret = models.CharField(max_length=14, blank=True, null=True, verbose_name="SIRET")
     siren = models.CharField(max_length=9, blank=True, null=True, verbose_name="SIREN")
-    tva_number = models.CharField(max_length=50, blank=True, null=True, verbose_name="Numéro TVA")
+    tva_number = models.CharField(max_length=50, blank=True, null=True, verbose_name="Numéro TVA intracommunautaire")
     logo = models.ImageField(upload_to='logos/', blank=True, null=True, verbose_name="Logo")
-    country = models.CharField(max_length=100, default="France")
-    
+    country = models.CharField(max_length=100, default="France", verbose_name="Pays")
+
+    # Paramètres facturation
+    currency = models.CharField(max_length=10, default="EUR", verbose_name="Devise")
+    invoice_prefix = models.CharField(max_length=20, default="FAC-", blank=True, verbose_name="Préfixe facture")
+    default_tva = models.DecimalField(max_digits=5, decimal_places=2, default=20, verbose_name="TVA par défaut (%)")
+    default_payment_terms = models.CharField(
+        max_length=255, blank=True, null=True,
+        default="30 jours fin de mois",
+        verbose_name="Conditions de paiement par défaut",
+    )
+    default_legal_mentions = models.TextField(
+        blank=True, null=True,
+        verbose_name="Mentions légales par défaut",
+    )
+
     class Meta:
         verbose_name = "Information Entreprise"
         verbose_name_plural = "Informations Entreprise"
-    
+
     def __str__(self):
         return self.name or "Informations Entreprise"
 
 
 class Invoice(models.Model):
-    """Invoice model"""
-    PAYMENT_STATUS_CHOICES = [
-        ('pending', 'En attente'),
-        ('paid', 'Payée'),
-        ('partial', 'Partiellement payée'),
-        ('overdue', 'En retard'),
-    ]
-    
+    """Invoice model with business rules and totals"""
     PAYMENT_METHOD_CHOICES = [
-        ('bank_transfer', 'Virement bancaire'),
-        ('check', 'Chèque'),
-        ('cash', 'Espèces'),
-        ('card', 'Carte bancaire'),
-        ('other', 'Autre'),
+        ('ESPECES', 'Espèces'),
+        ('CARTE_BANCAIRE', 'Carte bancaire'),
+        ('VIREMENT', 'Virement'),
+        ('CHEQUE', 'Chèque'),
+        ('MOBILE_MONEY', 'Mobile Money'),
     ]
-    
+
+    STATUT_CHOICES = [
+        ('BROUILLON', 'Brouillon'),
+        ('VALIDEE', 'Validée'),
+        ('ENVOYEE', 'Envoyée'),
+        ('PARTIELLEMENT_PAYEE', 'Partiellement payée'),
+        ('PAYEE', 'Payée'),
+        ('EN_RETARD', 'En retard'),
+        ('ANNULEE', 'Annulée'),
+    ]
+
     invoice_number = models.CharField(max_length=20, unique=True, verbose_name="Numéro de facture")
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='invoices', verbose_name="Client")
-    date = models.DateField(default=datetime.now, verbose_name="Date")
+    date = models.DateField(default=datetime.now, verbose_name="Date de facture")
     due_date = models.DateField(verbose_name="Date d'échéance")
-    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='bank_transfer')
-    
-    # Calculations
-    subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Sous-total")
-    
-    # Remise (discount)
-    remise_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name="Remise %")
-    remise_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Montant remise")
-    
-    # Rabais (rebate)
-    rabais_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name="Rabais %")
-    rabais_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Montant rabais")
-    
-    # Escompte (early payment discount)
-    escompte_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name="Escompte %")
-    escompte_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Montant escompte")
-    
-    total_discount = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Réduction totale")
-    tva_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Montant TVA")
-    total = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Total")
-    
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='VIREMENT', verbose_name="Mode de règlement prévu")
+
+    statut = models.CharField(max_length=30, choices=STATUT_CHOICES, default='BROUILLON', verbose_name="Statut")
+
+    # Remises simplifiées
+    remise_globale_pourcentage = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name="Remise globale %")
+    remise_globale_montant = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Remise globale €")
+
+    # Totaux
+    sous_total_ht = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Sous-total HT")
+    total_remise = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Total remise")
+    total_ht = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Total HT")
+    total_tva = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Total TVA")
+    total_ttc = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Total TTC")
+
     # Payment tracking
     amount_paid = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Montant payé")
-    payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending', verbose_name="Statut")
-    
+
+    # Mentions métier
+    notes = models.TextField(blank=True, null=True, verbose_name="Notes facture")
+    payment_terms = models.CharField(max_length=255, blank=True, null=True, verbose_name="Conditions de paiement")
+    legal_mentions = models.TextField(blank=True, null=True, verbose_name="Mentions légales")
+
+    # Stock handling
+    stock_movement_done = models.BooleanField(default=False, verbose_name="Mouvement de stock effectué")
+
     # Credit notes
     is_credit_note = models.BooleanField(default=False, verbose_name="Avoir")
     credit_note_reason = models.TextField(blank=True, null=True, verbose_name="Raison de l'avoir")
     original_invoice = models.ForeignKey('self', on_delete=models.SET_NULL, blank=True, null=True, related_name='credit_notes', verbose_name="Facture originale")
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -148,53 +439,238 @@ class Invoice(models.Model):
     
     def __str__(self):
         return f"Facture {self.invoice_number}"
-    
-    @property
-    def remaining_amount(self):
-        """Calculate remaining amount to pay"""
-        return max(0, self.total - self.amount_paid)
-    
-    def update_payment_status(self):
-        """Update payment status based on amount paid"""
-        if self.amount_paid >= self.total:
-            self.payment_status = 'paid'
-        elif self.amount_paid > 0:
-            self.payment_status = 'partial'
-        elif self.due_date < datetime.now().date():
-            self.payment_status = 'overdue'
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        # due date must be >= date
+        if self.due_date and self.date and self.due_date < self.date:
+            raise ValidationError({'due_date': 'La date d\'échéance doit être supérieure ou égale à la date de facture.'})
+        # remises exclusive
+        if self.remise_globale_pourcentage and self.remise_globale_montant and float(self.remise_globale_pourcentage) > 0 and float(self.remise_globale_montant) > 0:
+            raise ValidationError('La remise globale en % et en montant ne peuvent pas être utilisées en même temps.')
+
+    def calculate_totals(self):
+        """Recalculate all totals from items and discounts.
+
+        Ordre de calcul (respecte les standards de facturation FR) :
+          1. Sous-total HT lignes (remises lignes déjà appliquées dans item.total_ht)
+          2. TVA brute lignes
+          3. Remise globale (% ou montant €) sur le sous-total HT
+          4. Total HT = sous-total - remise globale
+          5. TVA ajustée proportionnellement au ratio post-remise
+             (préserve les taux multiples 5,5 / 10 / 20 % correctement)
+          6. Total TTC = Total HT + TVA ajustée
+        """
+        from decimal import Decimal, ROUND_HALF_UP
+        # On first save the invoice has no PK yet, so reverse relation access would fail.
+        items = list(self.items.all()) if self.pk else []
+        sous_total = Decimal('0.00')
+        tva_brute = Decimal('0.00')
+        for it in items:
+            sous_total += (it.total_ht or Decimal('0.00'))
+            tva_brute += (it.total_tva or Decimal('0.00'))
+
+        # Apply global discount (percentage XOR amount)
+        total_remise = Decimal('0.00')
+        if self.remise_globale_pourcentage and float(self.remise_globale_pourcentage) > 0:
+            total_remise = (sous_total * (Decimal(str(self.remise_globale_pourcentage)) / Decimal('100'))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        elif self.remise_globale_montant and float(self.remise_globale_montant) > 0:
+            total_remise = Decimal(str(self.remise_globale_montant)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        # Business safety: discount cannot exceed subtotal.
+        if total_remise > sous_total:
+            total_remise = sous_total
+
+        total_ht = (sous_total - total_remise).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        # Recompute VAT proportionally so a global discount actually reduces TTC.
+        if sous_total > 0 and total_remise > 0:
+            ratio = (total_ht / sous_total)
+            total_tva = (tva_brute * ratio).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         else:
-            self.payment_status = 'pending'
+            total_tva = tva_brute.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        total_ttc = (total_ht + total_tva).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        # Update fields
+        self.sous_total_ht = sous_total
+        self.total_remise = total_remise
+        self.total_ht = total_ht
+        self.total_tva = total_tva
+        self.total_ttc = total_ttc
+
+    @property
+    def reste_a_payer(self):
+        from decimal import Decimal
+        return max(Decimal('0.00'), (self.total_ttc or 0) - (self.amount_paid or 0))
+
+    @property
+    def montant_paye(self):
+        return self.amount_paid
+
+    def _apply_stock_movement_if_needed(self):
+        """Decrease product stock only when invoice becomes VALIDEE."""
+        if self.statut != 'VALIDEE' or self.stock_movement_done:
+            return
+
+        for item in self.items.select_related('produit_service').all():
+            if not item.produit_service:
+                continue
+            if not item.produit_service.can_allocate(item.quantite):
+                from django.core.exceptions import ValidationError
+                raise ValidationError(
+                    f"Stock insuffisant. Disponible : {item.produit_service.stock} unités."
+                )
+            item.produit_service.decrease_stock(item.quantite)
+
+        self.stock_movement_done = True
+
+    def update_statut_from_payment(self):
+        """Set statut automatically from payments"""
+        if self.statut == 'ANNULEE':
+            return
+
+        if float(self.amount_paid or 0) >= float(self.total_ttc or 0) and float(self.total_ttc or 0) > 0:
+            self.statut = 'PAYEE'
+        elif float(self.amount_paid or 0) > 0:
+            self.statut = 'PARTIELLEMENT_PAYEE'
+        else:
+            if self.due_date and self.due_date < datetime.now().date() and float(self.reste_a_payer or 0) > 0:
+                self.statut = 'EN_RETARD'
+            else:
+                if self.statut == 'BROUILLON':
+                    self.statut = 'BROUILLON'
+                else:
+                    self.statut = 'VALIDEE'
+
+    def save(self, *args, **kwargs):
+        from django.core.exceptions import ValidationError
+
+        previous_statut = None
+        if self.pk:
+            previous_statut = Invoice.objects.filter(pk=self.pk).values_list('statut', flat=True).first()
+
+        # Ensure totals recalculated before saving
+        self.calculate_totals()
+        self.clean()
+        # update payment-based statut
+        self.update_statut_from_payment()
+
+        # Apply stock movement only on transition to VALIDEE.
+        if previous_statut != 'VALIDEE' and self.statut == 'VALIDEE':
+            # Must already be saved to access reverse relation reliably.
+            if not self.pk:
+                super().save(*args, **kwargs)
+            self._apply_stock_movement_if_needed()
+
+        # Do not allow reverting payment amount below zero.
+        if float(self.amount_paid or 0) < 0:
+            raise ValidationError({'amount_paid': 'Le montant payé ne peut pas être négatif.'})
+
+        super().save(*args, **kwargs)
 
 
 class InvoiceItem(models.Model):
-    """Invoice line item"""
+    """Invoice line item (LigneFacture) with automatic calculations
+
+    Fields:
+    - facture
+    - produit/service
+    - description
+    - quantite
+    - prix_unitaire_ht
+    - taux_tva
+    - unite
+    - remise_pourcentage
+    - total_ht, total_tva, total_ttc
+    """
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='items', verbose_name="Facture")
+    produit_service = models.ForeignKey(Product, on_delete=models.SET_NULL, blank=True, null=True, verbose_name="Produit / Service")
     description = models.CharField(max_length=255, verbose_name="Description")
-    quantity = models.IntegerField(default=1, validators=[MinValueValidator(1)], verbose_name="Quantité")
-    price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)], verbose_name="Prix unitaire")
-    product = models.ForeignKey(Product, on_delete=models.SET_NULL, blank=True, null=True, verbose_name="Produit")
-    
+    quantite = models.DecimalField(max_digits=10, decimal_places=2, default=1, validators=[MinValueValidator(0.01)], verbose_name="Quantité")
+    prix_unitaire_ht = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(0)], default=0, verbose_name="Prix unitaire HT")
+    taux_tva = models.DecimalField(max_digits=5, decimal_places=2, default=20.00, verbose_name="Taux TVA")
+    unite = models.CharField(max_length=10, blank=True, null=True, verbose_name="Unité")
+    remise_pourcentage = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name="Remise %")
+
+    # Totaux par ligne
+    total_ht = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Total HT")
+    total_tva = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Total TVA")
+    total_ttc = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Total TTC")
+
     class Meta:
         verbose_name = "Ligne de facture"
         verbose_name_plural = "Lignes de facture"
-    
+
     def __str__(self):
-        return f"{self.description} x{self.quantity}"
-    
+        return f"{self.description} x{self.quantite}"
+
+    # Compatibilité avec le code existant qui utilise encore item.product.
+    @property
+    def product(self):
+        return self.produit_service
+
+    @product.setter
+    def product(self, value):
+        self.produit_service = value
+
     @property
     def total(self):
-        """Calculate line total"""
-        return self.quantity * self.price
+        """Backward-compatible total (TTC)"""
+        return self.total_ttc
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        # Quantite > 0
+        if float(self.quantite or 0) <= 0:
+            raise ValidationError({'quantite': 'La quantité doit être supérieure à 0.'})
+        if float(self.prix_unitaire_ht or 0) < 0:
+            raise ValidationError({'prix_unitaire_ht': 'Le prix unitaire doit être >= 0.'})
+        if float(self.taux_tva or 0) < 0 or float(self.taux_tva or 0) > 100:
+            raise ValidationError({'taux_tva': 'La TVA doit être comprise entre 0 et 100.'})
+        if float(self.remise_pourcentage or 0) < 0 or float(self.remise_pourcentage or 0) > 100:
+            raise ValidationError({'remise_pourcentage': 'La remise doit être entre 0 et 100.'})
+
+    def save(self, *args, **kwargs):
+        """Auto-fill fields from selected product and compute totals."""
+        from decimal import Decimal, ROUND_HALF_UP
+        if self.produit_service:
+            # auto-fill description, prix_unitaire_ht, taux_tva, unite if not provided
+            if not self.description:
+                self.description = self.produit_service.description or self.produit_service.name
+            if (not self.prix_unitaire_ht or float(self.prix_unitaire_ht) == 0) and getattr(self.produit_service, 'prix_unitaire_ht', None) is not None:
+                self.prix_unitaire_ht = self.produit_service.prix_unitaire_ht
+            if (not self.taux_tva or float(self.taux_tva) == 0) and getattr(self.produit_service, 'taux_tva', None) is not None:
+                self.taux_tva = self.produit_service.taux_tva
+            if not self.unite and getattr(self.produit_service, 'unite', None) is not None:
+                self.unite = self.produit_service.unite
+
+        # compute totals
+        q = Decimal(str(self.quantite or 0))
+        pu = Decimal(str(self.prix_unitaire_ht or 0))
+        remise = Decimal(str(self.remise_pourcentage or 0))
+
+        line_ht = (q * pu).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        remise_amount = (line_ht * (remise / Decimal('100'))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        total_ht = (line_ht - remise_amount).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        total_tva = (total_ht * (Decimal(str(self.taux_tva or 0)) / Decimal('100'))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        total_ttc = (total_ht + total_tva).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        self.total_ht = total_ht
+        self.total_tva = total_tva
+        self.total_ttc = total_ttc
+
+        super().save(*args, **kwargs)
 
 
 class Payment(models.Model):
     """Payment record"""
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='payments', verbose_name="Facture")
     amount = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Montant")
-    payment_method = models.CharField(max_length=20, verbose_name="Méthode de paiement")
+    payment_method = models.CharField(max_length=20, choices=Invoice.PAYMENT_METHOD_CHOICES, blank=True, verbose_name="Méthode de paiement utilisée")
     payment_date = models.DateField(default=datetime.now, verbose_name="Date de paiement")
     reference = models.CharField(max_length=100, blank=True, null=True, verbose_name="Référence")
     notes = models.TextField(blank=True, null=True, verbose_name="Notes")
+    email_sent = models.BooleanField(default=False, verbose_name="Email envoyé")
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -289,51 +765,97 @@ class QuoteItem(models.Model):
 
 
 class Notification(models.Model):
-    """Notification model"""
-    TYPE_CHOICES = [
-        ('invoice_created', 'Facture créée'),
-        ('invoice_sent', 'Facture envoyée'),
-        ('invoice_paid', 'Facture payée'),
-        ('invoice_overdue', 'Facture en retard'),
-        ('quote_created', 'Devis créé'),
-        ('quote_accepted', 'Devis accepté'),
-        ('quote_rejected', 'Devis rejeté'),
-        ('payment_received', 'Paiement reçu'),
-        ('reminder', 'Rappel'),
+    """Business notification with compatibility aliases for legacy fields."""
+    TYPE_NOTIFICATION_CHOICES = [
+        ('FACTURE', 'Facture'),
+        ('PAIEMENT', 'Paiement'),
+        ('STOCK', 'Stock'),
+        ('CLIENT', 'Client'),
+        ('SYSTEME', 'Système'),
     ]
-    
-    STATUS_CHOICES = [
-        ('pending', 'En attente'),
-        ('sent', 'Envoyé'),
-        ('failed', 'Échoué'),
-        ('read', 'Lu'),
+
+    NIVEAU_CHOICES = [
+        ('HAUTE', 'Haute'),
+        ('MOYENNE', 'Moyenne'),
+        ('BASSE', 'Basse'),
     ]
-    
-    type = models.CharField(max_length=50, choices=TYPE_CHOICES, verbose_name="Type")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="Statut")
-    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='notifications', verbose_name="Client")
+
+    # Required business fields
+    titre = models.CharField(max_length=255, verbose_name="Titre")
+    message = models.TextField(verbose_name="Message")
+    type_notification = models.CharField(
+        max_length=20,
+        choices=TYPE_NOTIFICATION_CHOICES,
+        default='SYSTEME',
+        verbose_name="Type de notification"
+    )
+    niveau = models.CharField(max_length=20, choices=NIVEAU_CHOICES, default='BASSE', verbose_name="Niveau")
+    lu = models.BooleanField(default=False, verbose_name="Lu")
+    date_creation = models.DateTimeField(auto_now_add=True, verbose_name="Date de création")
+    lien = models.CharField(max_length=255, blank=True, null=True, verbose_name="Lien")
+
+    # Optional relations
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='notifications', verbose_name="Client", blank=True, null=True)
     invoice = models.ForeignKey(Invoice, on_delete=models.SET_NULL, blank=True, null=True, related_name='notifications', verbose_name="Facture")
     quote = models.ForeignKey(Quote, on_delete=models.SET_NULL, blank=True, null=True, related_name='notifications', verbose_name="Devis")
-    
-    subject = models.CharField(max_length=255, verbose_name="Sujet")
-    message = models.TextField(verbose_name="Message")
-    recipient_email = models.EmailField(verbose_name="Email du destinataire")
-    
-    created_at = models.DateTimeField(auto_now_add=True)
+
+    # Legacy fields kept for backward compatibility
+    type = models.CharField(max_length=50, blank=True, null=True, verbose_name="Type legacy")
+    status = models.CharField(max_length=20, default='pending', verbose_name="Statut legacy")
+    subject = models.CharField(max_length=255, blank=True, null=True, verbose_name="Sujet legacy")
+    recipient_email = models.EmailField(blank=True, null=True, verbose_name="Email du destinataire")
+    created_at = models.DateTimeField(blank=True, null=True)
     sent_at = models.DateTimeField(blank=True, null=True, verbose_name="Date d'envoi")
     error_message = models.TextField(blank=True, null=True, verbose_name="Message d'erreur")
-    
+
     class Meta:
         verbose_name = "Notification"
         verbose_name_plural = "Notifications"
-        ordering = ['-created_at']
+        ordering = ['-date_creation']
         indexes = [
-            models.Index(fields=['client', '-created_at']),
-            models.Index(fields=['status', 'type']),
+            models.Index(fields=['-date_creation']),
+            models.Index(fields=['type_notification', 'niveau']),
+            models.Index(fields=['lu']),
         ]
-    
+
     def __str__(self):
-        return f"{self.get_type_display()} - {self.client.name}"
+        return f"{self.titre}"
+
+    @property
+    def bootstrap_badge_class(self):
+        mapping = {
+            'HAUTE': 'danger',
+            'MOYENNE': 'warning text-dark',
+            'BASSE': 'secondary',
+        }
+        return mapping.get(self.niveau, 'secondary')
+
+    def save(self, *args, **kwargs):
+        # Keep legacy fields synchronized to avoid breaking old code paths.
+        if self.niveau in ['ERROR']:
+            self.niveau = 'HAUTE'
+        elif self.niveau in ['WARNING']:
+            self.niveau = 'MOYENNE'
+        elif self.niveau in ['INFO', 'SUCCESS', None, '']:
+            self.niveau = 'BASSE'
+
+        if not self.subject and self.titre:
+            self.subject = self.titre
+        if not self.titre and self.subject:
+            self.titre = self.subject
+
+        if not self.type and self.type_notification:
+            self.type = self.type_notification
+        if not self.type_notification and self.type:
+            self.type_notification = self.type
+
+        self.status = 'read' if self.lu else (self.status or 'pending')
+
+        super().save(*args, **kwargs)
+
+        # date_creation is the source of truth; keep created_at as compatibility mirror.
+        if self.created_at is None:
+            Notification.objects.filter(pk=self.pk, created_at__isnull=True).update(created_at=self.date_creation)
 
 
 class EmailTemplate(models.Model):
@@ -407,265 +929,3 @@ class AuditLog(models.Model):
     
     def __str__(self):
         return f"{self.get_action_display()} - {self.get_model_display()} (#{self.object_id}) by {self.user or 'Anonymous'}"
-
-
-# ============================================================================
-# TIER 3 - BONUS MASTER 🔥: IA/Intelligence & Synchronisation Comptable
-# ============================================================================
-
-class AnomalyDetection(models.Model):
-    """IA: Détection automatique des anomalies"""
-    ANOMALY_TYPES = [
-        ('unusual_amount', 'Montant anormal'),
-        ('payment_delay', 'Retard de paiement'),
-        ('duplicate_invoice', 'Facture en doublon'),
-        ('unusual_client', 'Client inhabituel'),
-        ('pricing_error', 'Erreur de tarification'),
-        ('unusual_frequency', 'Fréquence anormale'),
-    ]
-    
-    SEVERITY_CHOICES = [
-        ('low', 'Basse'),
-        ('medium', 'Moyenne'),
-        ('high', 'Haute'),
-        ('critical', 'Critique'),
-    ]
-    
-    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, verbose_name="Facture")
-    anomaly_type = models.CharField(max_length=50, choices=ANOMALY_TYPES, verbose_name="Type d'anomalie")
-    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, verbose_name="Sévérité")
-    description = models.TextField(verbose_name="Description de l'anomalie")
-    detected_value = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valeur détectée")
-    expected_value = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valeur attendue")
-    confidence = models.DecimalField(max_digits=3, decimal_places=2, validators=[MinValueValidator(0), MinValueValidator(100)], verbose_name="Confiance %")
-    is_resolved = models.BooleanField(default=False, verbose_name="Résolu")
-    resolved_at = models.DateTimeField(blank=True, null=True, verbose_name="Date de résolution")
-    resolution_notes = models.TextField(blank=True, null=True, verbose_name="Notes de résolution")
-    detected_at = models.DateTimeField(auto_now_add=True, verbose_name="Détecté le")
-    
-    class Meta:
-        verbose_name = "Détection d'anomalie"
-        verbose_name_plural = "Détections d'anomalies"
-        ordering = ['-detected_at']
-        indexes = [
-            models.Index(fields=['invoice', 'severity']),
-            models.Index(fields=['is_resolved', '-detected_at']),
-            models.Index(fields=['anomaly_type']),
-        ]
-    
-    def __str__(self):
-        return f"{self.get_anomaly_type_display()} - {self.invoice.number} ({self.get_severity_display()})"
-
-
-class RevenueForecast(models.Model):
-    """IA: Prévisions de chiffre d'affaires"""
-    FORECAST_PERIOD = [
-        ('weekly', 'Hebdomadaire'),
-        ('monthly', 'Mensuelle'),
-        ('quarterly', 'Trimestrielle'),
-        ('yearly', 'Annuelle'),
-    ]
-    
-    period = models.CharField(max_length=20, choices=FORECAST_PERIOD, verbose_name="Période")
-    forecast_date = models.DateField(verbose_name="Date de la prévision")
-    predicted_revenue = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="CA prédit")
-    predicted_invoices = models.IntegerField(verbose_name="Factures prévues")
-    confidence_interval_low = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Intervalle bas")
-    confidence_interval_high = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Intervalle haut")
-    actual_revenue = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, verbose_name="CA réel")
-    actual_invoices = models.IntegerField(blank=True, null=True, verbose_name="Factures réelles")
-    accuracy = models.DecimalField(max_digits=3, decimal_places=2, blank=True, null=True, validators=[MinValueValidator(0), MinValueValidator(100)], verbose_name="Précision %")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        verbose_name = "Prévision de CA"
-        verbose_name_plural = "Prévisions de CA"
-        ordering = ['-forecast_date']
-        unique_together = ('period', 'forecast_date')
-        indexes = [
-            models.Index(fields=['period', 'forecast_date']),
-        ]
-    
-    def __str__(self):
-        return f"{self.get_period_display()} - {self.forecast_date}: {self.predicted_revenue}€"
-
-
-class IntelligentAlert(models.Model):
-    """IA: Alertes intelligentes basées sur IA"""
-    ALERT_TYPES = [
-        ('anomaly', 'Anomalie détectée'),
-        ('forecast_warning', 'Avertissement prévisions'),
-        ('payment_risk', 'Risque de paiement'),
-        ('revenue_decline', 'Baisse de revenus'),
-        ('unusual_pattern', 'Motif inhabituél'),
-        ('duplicate_detection', 'Doublon détecté'),
-    ]
-    
-    PRIORITY_CHOICES = [
-        ('low', 'Basse'),
-        ('medium', 'Moyenne'),
-        ('high', 'Haute'),
-        ('urgent', 'Urgent'),
-    ]
-    
-    alert_type = models.CharField(max_length=50, choices=ALERT_TYPES, verbose_name="Type d'alerte")
-    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, verbose_name="Priorité")
-    title = models.CharField(max_length=255, verbose_name="Titre")
-    description = models.TextField(verbose_name="Description")
-    related_invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, blank=True, null=True, verbose_name="Facture associée")
-    related_client = models.ForeignKey(Client, on_delete=models.CASCADE, blank=True, null=True, verbose_name="Client associé")
-    recommendation = models.TextField(blank=True, null=True, verbose_name="Recommandation IA")
-    is_acknowledged = models.BooleanField(default=False, verbose_name="Confirmé")
-    acknowledged_by = models.CharField(max_length=255, blank=True, null=True, verbose_name="Confirmé par")
-    acknowledged_at = models.DateTimeField(blank=True, null=True, verbose_name="Confirmé le")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
-    
-    class Meta:
-        verbose_name = "Alerte intelligente"
-        verbose_name_plural = "Alertes intelligentes"
-        ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['priority', 'is_acknowledged']),
-            models.Index(fields=['alert_type', '-created_at']),
-        ]
-    
-    def __str__(self):
-        return f"{self.get_alert_type_display()} - {self.get_priority_display()}: {self.title}"
-
-
-class AccountingSynchronization(models.Model):
-    """Synchronisation comptable: Export CSV et intégration"""
-    EXPORT_TYPES = [
-        ('invoices', 'Factures'),
-        ('payments', 'Paiements'),
-        ('clients', 'Clients'),
-        ('products', 'Produits'),
-        ('journal', 'Journal comptable'),
-        ('trial_balance', 'Balance trial'),
-    ]
-    
-    STATUS_CHOICES = [
-        ('pending', 'En attente'),
-        ('processing', 'En cours'),
-        ('completed', 'Complété'),
-        ('failed', 'Échoué'),
-    ]
-    
-    export_type = models.CharField(max_length=50, choices=EXPORT_TYPES, verbose_name="Type d'export")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="Statut")
-    start_date = models.DateField(verbose_name="Date de début")
-    end_date = models.DateField(verbose_name="Date de fin")
-    records_count = models.IntegerField(default=0, verbose_name="Nombre d'enregistrements")
-    file_path = models.CharField(max_length=500, blank=True, null=True, verbose_name="Chemin fichier")
-    file_size = models.BigIntegerField(blank=True, null=True, verbose_name="Taille fichier (bytes)")
-    checksum = models.CharField(max_length=64, blank=True, null=True, verbose_name="Checksum SHA256")
-    error_message = models.TextField(blank=True, null=True, verbose_name="Message d'erreur")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
-    completed_at = models.DateTimeField(blank=True, null=True, verbose_name="Complété le")
-    created_by = models.CharField(max_length=255, blank=True, null=True, verbose_name="Créé par")
-    
-    class Meta:
-        verbose_name = "Synchronisation comptable"
-        verbose_name_plural = "Synchronisations comptables"
-        ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['export_type', 'status']),
-            models.Index(fields=['-created_at']),
-        ]
-    
-    def __str__(self):
-        return f"{self.get_export_type_display()} ({self.get_status_display()}) - {self.start_date} à {self.end_date}"
-
-
-class RealtimeNotification(models.Model):
-    """Notifications temps réel - Tier 4"""
-    NOTIFICATION_TYPES = [
-        ('anomaly_critical', 'Anomalie Critique'),
-        ('payment_received', 'Paiement Reçu'),
-        ('invoice_overdue', 'Facture en Retard'),
-        ('alert_acknowledged', 'Alerte Reconnue'),
-        ('forecast_updated', 'Prévision Mise à Jour'),
-        ('export_completed', 'Export Complété'),
-        ('system_alert', 'Alerte Système'),
-        ('new_invoice', 'Nouvelle Facture'),
-        ('new_quote', 'Nouveau Devis'),
-        ('payment_reminder', 'Rappel Paiement'),
-    ]
-    
-    PRIORITY_CHOICES = [
-        ('low', 'Basse'),
-        ('medium', 'Moyenne'),
-        ('high', 'Élevée'),
-        ('critical', 'Critique'),
-    ]
-    
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='realtime_notifications', verbose_name="Utilisateur")
-    notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES, verbose_name="Type")
-    title = models.CharField(max_length=255, verbose_name="Titre")
-    message = models.TextField(verbose_name="Message")
-    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium', verbose_name="Priorité")
-    is_read = models.BooleanField(default=False, verbose_name="Est lu?")
-    read_at = models.DateTimeField(blank=True, null=True, verbose_name="Lu le")
-    is_dismissed = models.BooleanField(default=False, verbose_name="Est rejeté?")
-    action_url = models.CharField(max_length=500, blank=True, null=True, verbose_name="URL d'action")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
-    expires_at = models.DateTimeField(blank=True, null=True, verbose_name="Expire le")
-    client = models.ForeignKey(Client, on_delete=models.SET_NULL, blank=True, null=True, verbose_name="Client lié")
-    invoice = models.ForeignKey(Invoice, on_delete=models.SET_NULL, blank=True, null=True, verbose_name="Facture liée")
-    
-    class Meta:
-        verbose_name = "Notification Real-time"
-        verbose_name_plural = "Notifications Real-time"
-        ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['user', '-created_at']),
-            models.Index(fields=['priority', 'is_read']),
-            models.Index(fields=['notification_type']),
-        ]
-    
-    def __str__(self):
-        return f"{self.get_notification_type_display()} - {self.title}"
-
-
-class AdvancedDashboard(models.Model):
-    """Tableau de bord avancé personnalisable - Tier 4"""
-    PERIOD_CHOICES = [
-        ('daily', 'Quotidien'),
-        ('weekly', 'Hebdomadaire'),
-        ('monthly', 'Mensuel'),
-        ('quarterly', 'Trimestriel'),
-        ('yearly', 'Annuel'),
-        ('custom', 'Personnalisé'),
-    ]
-    
-    THEME_CHOICES = [
-        ('light', 'Clair'),
-        ('dark', 'Sombre'),
-        ('auto', 'Automatique'),
-    ]
-    
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='advanced_dashboard', verbose_name="Utilisateur")
-    title = models.CharField(max_length=255, default='Tableau de Bord', verbose_name="Titre")
-    is_enabled = models.BooleanField(default=True, verbose_name="Activé?")
-    widgets_config = models.TextField(default='[]', verbose_name="Configuration des widgets")
-    kpi_list = models.TextField(default='[]', verbose_name="Liste des KPIs")
-    default_period = models.CharField(max_length=20, choices=PERIOD_CHOICES, default='monthly', verbose_name="Période par défaut")
-    color_scheme = models.CharField(max_length=50, default='auto', verbose_name="Schéma de couleur")
-    auto_refresh = models.BooleanField(default=True, verbose_name="Rafraîchissement auto?")
-    refresh_interval = models.IntegerField(default=30, verbose_name="Intervalle de rafraîchissement (sec)")
-    show_forecasts = models.BooleanField(default=True, verbose_name="Afficher les prévisions?")
-    show_anomalies = models.BooleanField(default=True, verbose_name="Afficher les anomalies?")
-    show_alerts = models.BooleanField(default=True, verbose_name="Afficher les alertes?")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Mis à jour le")
-    
-    class Meta:
-        verbose_name = "Tableau de Bord Avancé"
-        verbose_name_plural = "Tableaux de Bord Avancés"
-        indexes = [
-            models.Index(fields=['user', 'is_enabled']),
-        ]
-    
-    def __str__(self):
-        return f"Dashboard avancé - {self.user.username}"

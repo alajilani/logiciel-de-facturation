@@ -6,8 +6,8 @@
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-md-8">
-            <h1><i class="bi bi-file-text"></i> {{ invoice.invoice_number }}</h1>
-            <p class="text-muted">{{ invoice.client.name }}</p>
+            <h1>{{ invoice.invoice_number }}</h1>
+            <p class="text-muted">{{ invoice.client.nom }}</p>
         </div>
         <div class="col-md-4 text-end">
             <a href="{% url 'invoice-update' invoice.id %}" class="btn btn-warning">
@@ -16,6 +16,16 @@
             <a href="{% url 'export-pdf' invoice.id %}" class="btn btn-danger">
                 <i class="bi bi-file-pdf"></i> PDF
             </a>
+            {% if invoice.client.email %}
+            <a href="{% url 'send-invoice-email' invoice.id %}" class="btn btn-primary">
+                <i class="bi bi-envelope"></i> Envoyer par email
+            </a>
+            {% if invoice.statut == 'EN_RETARD' %}
+            <a href="{% url 'send-reminder' invoice.id %}" class="btn btn-outline-warning">
+                <i class="bi bi-bell"></i> Rappel
+            </a>
+            {% endif %}
+            {% endif %}
         </div>
     </div>
 
@@ -31,15 +41,17 @@
                             <p>
                                 <strong>Date:</strong> {{ invoice.date|date:"d/m/Y" }}<br>
                                 <strong>Échéance:</strong> {{ invoice.due_date|date:"d/m/Y" }}<br>
-                                <strong>Paiement:</strong> {{ invoice.get_payment_method_display }}
+                                <strong>Mode de règlement prévu:</strong> {{ invoice.get_payment_method_display }}<br>
+                                <strong>Créée le:</strong> {{ invoice.created_at|date:"d/m/Y H:i" }}<br>
+                                <strong>Dernière modification:</strong> {{ invoice.updated_at|date:"d/m/Y H:i" }}
                             </p>
                         </div>
                         <div class="col-md-6">
                             <h6>Client</h6>
                             <p>
-                                <strong>{{ invoice.client.name }}</strong><br>
-                                {{ invoice.client.delivery_address }}<br>
-                                {{ invoice.client.country }}<br>
+                                <strong>{{ invoice.client.nom }}</strong><br>
+                                {{ invoice.client.adresse_complete_livraison }}<br>
+                                {{ invoice.client.pays_facturation }}<br>
                                 {% if invoice.client.email %}Email: {{ invoice.client.email }}{% endif %}
                             </p>
                         </div>
@@ -50,25 +62,31 @@
             <!-- Items -->
             <div class="card mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0">Articles</h5>
+                    <h5 class="mb-0">Lignes de facture</h5>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm mb-0">
                         <thead>
                             <tr>
+                                <th>Produit</th>
                                 <th>Description</th>
                                 <th class="text-end">Quantité</th>
-                                <th class="text-end">Prix U.</th>
-                                <th class="text-end">Total</th>
+                                <th class="text-end">PU HT</th>
+                                <th class="text-end">TVA</th>
+                                <th class="text-end">Remise</th>
+                                <th class="text-end">Total TTC</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for item in items %}
                             <tr>
+                                <td>{{ item.produit_service.name|default:"—" }}</td>
                                 <td>{{ item.description }}</td>
-                                <td class="text-end">{{ item.quantity }}</td>
-                                <td class="text-end">{{ item.price|floatformat:2 }}€</td>
-                                <td class="text-end"><strong>{{ item.total|floatformat:2 }}€</strong></td>
+                                <td class="text-end">{{ item.quantite }}</td>
+                                <td class="text-end">{{ item.prix_unitaire_ht|floatformat:2 }}€</td>
+                                <td class="text-end">{{ item.taux_tva }}%</td>
+                                <td class="text-end">{{ item.remise_pourcentage }}%</td>
+                                <td class="text-end"><strong>{{ item.total_ttc|floatformat:2 }}€</strong></td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -88,7 +106,7 @@
                             <tr>
                                 <th>Date</th>
                                 <th>Montant</th>
-                                <th>Méthode</th>
+                                <th>Méthode utilisée</th>
                                 <th>Référence</th>
                             </tr>
                         </thead>
@@ -106,6 +124,17 @@
                 </div>
             </div>
             {% endif %}
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Notes et conditions</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Notes facture:</strong> {{ invoice.notes|default:"—" }}</p>
+                    <p><strong>Conditions de paiement:</strong> {{ invoice.payment_terms|default:"—" }}</p>
+                    <p class="mb-0"><strong>Mentions légales:</strong> {{ invoice.legal_mentions|default:"—" }}</p>
+                </div>
+            </div>
         </div>
 
         <!-- Sidebar -->
@@ -115,22 +144,14 @@
                 <div class="card-body">
                     <h6 class="card-title">Statut</h6>
                     <div class="mb-3">
-                        {% if invoice.payment_status == 'paid' %}
-                            <span class="badge bg-success" style="font-size: 1rem;">Payée</span>
-                        {% elif invoice.payment_status == 'pending' %}
-                            <span class="badge bg-warning" style="font-size: 1rem;">En attente</span>
-                        {% elif invoice.payment_status == 'partial' %}
-                            <span class="badge bg-info" style="font-size: 1rem;">Partiellement payée</span>
-                        {% elif invoice.payment_status == 'overdue' %}
-                            <span class="badge bg-danger" style="font-size: 1rem;">En retard</span>
-                        {% endif %}
+                        <span class="badge bg-{% if invoice.statut == 'PAYEE' %}success{% elif invoice.statut == 'EN_RETARD' %}danger{% elif invoice.statut == 'ANNULEE' %}secondary{% else %}warning text-dark{% endif %}" style="font-size: 1rem;">{{ invoice.get_statut_display }}</span>
                     </div>
                     <hr>
                     <p class="mb-0">
                         <strong>Montant payé:</strong> {{ invoice.amount_paid|floatformat:2 }}€<br>
-                        <strong>Montant dû:</strong> {{ invoice.remaining_amount|floatformat:2 }}€
+                        <strong>Montant dû:</strong> {{ invoice.reste_a_payer|floatformat:2 }}€
                     </p>
-                    {% if invoice.remaining_amount > 0 %}
+                    {% if invoice.reste_a_payer > 0 %}
                     <a href="{% url 'add-payment' invoice.id %}" class="btn btn-success btn-sm mt-3 w-100">
                         <i class="bi bi-plus-circle"></i> Enregistrer un paiement
                     </a>
@@ -144,28 +165,24 @@
                     <h6 class="card-title">Totaux</h6>
                     <table class="table table-sm mb-0">
                         <tr>
-                            <td>Sous-total:</td>
-                            <td class="text-end">{{ invoice.subtotal|floatformat:2 }}€</td>
+                            <td>Sous-total HT:</td>
+                            <td class="text-end">{{ invoice.sous_total_ht|floatformat:2 }}€</td>
                         </tr>
                         <tr>
                             <td>Remise:</td>
-                            <td class="text-end">-{{ invoice.remise_amount|floatformat:2 }}€</td>
+                            <td class="text-end">-{{ invoice.total_remise|floatformat:2 }}€</td>
                         </tr>
                         <tr>
-                            <td>Rabais:</td>
-                            <td class="text-end">-{{ invoice.rabais_amount|floatformat:2 }}€</td>
+                            <td>Total HT:</td>
+                            <td class="text-end">{{ invoice.total_ht|floatformat:2 }}€</td>
                         </tr>
                         <tr>
-                            <td>Escompte:</td>
-                            <td class="text-end">-{{ invoice.escompte_amount|floatformat:2 }}€</td>
-                        </tr>
-                        <tr>
-                            <td>TVA (20%):</td>
-                            <td class="text-end">{{ invoice.tva_amount|floatformat:2 }}€</td>
+                            <td>TVA:</td>
+                            <td class="text-end">{{ invoice.total_tva|floatformat:2 }}€</td>
                         </tr>
                         <tr class="border-top">
                             <td><strong>TOTAL TTC:</strong></td>
-                            <td class="text-end"><strong>{{ invoice.total|floatformat:2 }}€</strong></td>
+                            <td class="text-end"><strong>{{ invoice.total_ttc|floatformat:2 }}€</strong></td>
                         </tr>
                     </table>
                 </div>

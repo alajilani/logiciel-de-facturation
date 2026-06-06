@@ -1,19 +1,10 @@
-<svg width="256" height="256" viewBox="0 0 256 256" fill="none"
-    xmlns="http://www.w3.org/2000/svg">
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
-        <linearGradient id="g1" x1="40" y1="28" x2="210" y2="216" gradientUnits="userSpaceOnUse">
-            <stop stop-color="#22D3EE"/>
-            <stop offset="0.55" stop-color="#2DD4BF"/>
-            <stop offset="1" stop-color="#A855F7"/>
-        </linearGradient>
-        <linearGradient id="g2" x1="72" y1="50" x2="194" y2="180" gradientUnits="userSpaceOnUse">
-            <stop stop-color="#34D399"/>
-            <stop offset="1" stop-color="#EC4899"/>
+        <linearGradient id="numaBg" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#6366F1"/>
+            <stop offset="1" stop-color="#8B5CF6"/>
         </linearGradient>
     </defs>
-    <rect width="256" height="256" rx="40" fill="#0B1730"/>
-    <path d="M68 58H178L148 90H99L68 122V58Z" fill="url(#g1)"/>
-    <path d="M68 122L99 154V198L68 166V122Z" fill="#38BDF8"/>
-    <path d="M99 154H146L178 122H131L99 154Z" fill="url(#g2)"/>
-    <path d="M122 102H172L158 116H122V102Z" fill="#1D4ED8" opacity="0.85"/>
+    <rect width="256" height="256" rx="56" fill="url(#numaBg)"/>
+    <path d="M80 184 L80 72 L100 72 L176 152 L176 72 L196 72 L196 184 L176 184 L100 104 L100 184 Z" fill="#FFFFFF"/>
 </svg>

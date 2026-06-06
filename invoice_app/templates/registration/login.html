@@ -1,187 +1,316 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Connexion - FactureApp{% endblock %}
+{% block title %}Connexion — Numa{% endblock %}
 
 {% block extra_css %}
 <style>
+    /* ---------- Reset chrome ---------- */
+    .navbar, .sidebar { display: none !important; }
+    .main-content { margin-left: 0 !important; padding: 0 !important; max-width: none !important; min-height: 100vh !important; }
+
+    /* ---------- Stage ---------- */
     body {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #f7f8fb;
+        font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-feature-settings: "cv11", "ss01";
+        color: #0f172a;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    .login-stage {
+        position: relative;
         min-height: 100vh;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-    }
-
-    .login-container {
-        width: 100%;
-        max-width: 420px;
-    }
-
-    .login-card {
-        background: white;
-        border-radius: 1rem;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        padding: 2.5rem 1.25rem 1.5rem;
         overflow: hidden;
+        /* Ultra-subtle dotted grid texture (premium SaaS feel) */
+        background-image: radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.045) 1px, transparent 0);
+        background-size: 22px 22px;
     }
 
-    .login-card-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 2rem 1.5rem;
+    /* Soft ambient violet glow — discreet, almost imperceptible */
+    .login-stage::before {
+        content: "";
+        position: absolute;
+        top: -340px;
+        right: -240px;
+        width: 780px;
+        height: 780px;
+        background: radial-gradient(circle at center, rgba(99, 102, 241, 0.09) 0%, rgba(139, 92, 246, 0.04) 38%, transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+    }
+    .login-stage::after {
+        content: "";
+        position: absolute;
+        bottom: -360px;
+        left: -260px;
+        width: 720px;
+        height: 720px;
+        background: radial-gradient(circle at center, rgba(139, 92, 246, 0.05) 0%, transparent 65%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    /* ---------- Shell ---------- */
+    .login-shell {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 440px;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    /* ---------- Card (branding intégré en haut) ---------- */
+    .login-card {
+        width: 100%;
+        background: #ffffff;
+        border: 1px solid #ebecf2;
+        border-radius: 18px;
+        box-shadow:
+            0 1px 2px rgba(15, 23, 42, 0.04),
+            0 18px 48px -12px rgba(15, 23, 42, 0.10),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        padding: 2.5rem 2.5rem 2rem;
+        position: relative;
+    }
+    /* Liseré violet ultra subtil en haut de la card */
+    .login-card::before {
+        content: "";
+        position: absolute;
+        top: 0; left: 18%; right: 18%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.25), transparent);
+    }
+
+    /* ---------- Brand bloc (intégré, compact) ---------- */
+    .login-brand {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 1.75rem;
+    }
+    .login-brand-logo {
+        width: 44px;
+        height: 44px;
+        border-radius: 11px;
+        margin-bottom: 0.85rem;
+        box-shadow: 0 6px 16px -4px rgba(99, 102, 241, 0.35),
+                    0 0 0 1px rgba(99, 102, 241, 0.08);
+    }
+    .login-brand-name {
+        font-size: 1.0625rem;
+        font-weight: 600;
+        letter-spacing: -0.025em;
+        color: #0f172a;
+        line-height: 1;
+        margin-bottom: 0.45rem;
+    }
+    .login-brand-tag {
+        font-size: 0.65rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: #9ca3af;
+    }
+
+    /* ---------- Titre & sous-titre ---------- */
+    .login-heading {
         text-align: center;
+        margin-bottom: 1.75rem;
     }
-
-    .login-card-header img {
-        width: 4rem;
-        height: 4rem;
-        margin-bottom: 1rem;
-        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-    }
-
-    .login-card-header h1 {
-        font-size: 1.75rem;
-        font-weight: 700;
-        margin: 0 0 0.5rem 0;
-    }
-
-    .login-card-header p {
-        margin: 0;
-        opacity: 0.95;
-        font-size: 0.9rem;
-    }
-
-    .login-card-body {
-        padding: 2rem 1.5rem;
-    }
-
-    .form-group {
-        margin-bottom: 1.5rem;
-    }
-
-    .form-label {
-        display: block;
-        margin-bottom: 0.5rem;
+    .login-title {
+        font-size: 1.25rem;
         font-weight: 600;
         color: #0f172a;
-        font-size: 0.875rem;
+        margin: 0 0 0.4rem;
+        letter-spacing: -0.02em;
+        line-height: 1.3;
+    }
+    .login-subtitle {
+        font-size: 0.85rem;
+        color: #6b7280;
+        margin: 0;
+        line-height: 1.5;
     }
 
-    .form-label i {
-        margin-right: 0.5rem;
+    /* ---------- Form ---------- */
+    .form-group { margin-bottom: 1.1rem; }
+    .form-label {
+        display: block;
+        margin-bottom: 0.45rem;
+        font-weight: 500;
+        font-size: 0.78rem;
+        color: #475569;
+        letter-spacing: 0.005em;
     }
+    .form-label i { display: none; }
 
     .form-control {
         width: 100%;
-        padding: 0.75rem 1rem;
-        border: 2px solid #e2e8f0;
-        border-radius: 0.5rem;
-        font-size: 0.875rem;
-        transition: all 0.3s ease;
-        background: #f8fafc;
+        padding: 0.72rem 0.9rem;
+        border: 1px solid #e3e6ed;
+        border-radius: 9px;
+        font-size: 0.92rem;
+        color: #0f172a;
+        background: #ffffff;
+        font-family: inherit;
+        line-height: 1.4;
+        box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.02);
+        transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
     }
-
+    .form-control::placeholder { color: #b4bac4; font-weight: 400; }
+    .form-control:hover { border-color: #cdd2dc; }
     .form-control:focus {
         outline: none;
-        border-color: #667eea;
-        background: white;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        border-color: #6366f1;
+        box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.02),
+                    0 0 0 3px rgba(99, 102, 241, 0.13);
+        background: #ffffff;
     }
 
+    .field-error {
+        color: #b91c1c;
+        font-size: 0.76rem;
+        margin-top: 0.35rem;
+        line-height: 1.4;
+    }
+
+    .form-meta {
+        display: flex;
+        justify-content: flex-end;
+        margin: -0.15rem 0 1.35rem;
+    }
+    .form-meta a {
+        font-size: 0.76rem;
+        font-weight: 500;
+        color: #6366f1;
+        text-decoration: none;
+        transition: color 0.15s ease;
+    }
+    .form-meta a:hover { color: #4f46e5; }
+
+    /* ---------- Bouton premium (slate-near-black, style Linear/Vercel) ---------- */
     .btn-login {
         width: 100%;
-        padding: 0.875rem 1rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        border-radius: 0.5rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        font-size: 0.95rem;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-    }
-
-    .btn-login:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-    }
-
-    .btn-login:active {
-        transform: translateY(0);
-    }
-
-    .forgot-password {
-        text-align: right;
-        margin-top: 1rem;
-    }
-
-    .forgot-password a {
-        color: #667eea;
-        text-decoration: none;
-        font-size: 0.8125rem;
+        padding: 0.78rem 1rem;
+        background: #0f172a;
+        color: #ffffff;
+        border: 1px solid #0f172a;
+        border-radius: 9px;
         font-weight: 500;
-        transition: all 0.3s ease;
+        font-size: 0.9rem;
+        font-family: inherit;
+        letter-spacing: -0.005em;
+        cursor: pointer;
+        line-height: 1.4;
+        box-shadow:
+            0 1px 2px rgba(15, 23, 42, 0.20),
+            inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.05s ease, border-color 0.18s ease;
     }
-
-    .forgot-password a:hover {
-        color: #764ba2;
-        text-decoration: underline;
+    .btn-login:hover {
+        background: #1e293b;
+        border-color: #1e293b;
+        box-shadow:
+            0 4px 14px rgba(15, 23, 42, 0.18),
+            inset 0 1px 0 rgba(255, 255, 255, 0.10);
     }
-
-    .alert {
-        border-radius: 0.5rem;
-        border: none;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        font-size: 0.875rem;
+    .btn-login:active {
+        transform: translateY(1px);
+        background: #0f172a;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.20);
     }
-
-    .alert-danger {
-        background: rgba(239, 68, 68, 0.1);
-        color: #dc2626;
+    .btn-login:focus-visible {
+        outline: none;
+        box-shadow:
+            0 1px 2px rgba(15, 23, 42, 0.20),
+            0 0 0 3px rgba(99, 102, 241, 0.30);
     }
+    .btn-login i { display: none; }
 
-    .alert-info {
-        background: rgba(59, 130, 246, 0.1);
-        color: #1e40af;
-    }
-
-    .login-card-footer {
-        background: #f8fafc;
-        padding: 1.5rem 1.5rem;
-        text-align: center;
-        color: #64748b;
+    /* ---------- Alerts ---------- */
+    .login-alert {
+        padding: 0.7rem 0.9rem;
+        border-radius: 9px;
         font-size: 0.8125rem;
-        border-top: 1px solid #e2e8f0;
+        line-height: 1.45;
+        margin-bottom: 1rem;
+        border: 1px solid transparent;
+    }
+    .login-alert--danger {
+        background: #fef2f2;
+        color: #991b1b;
+        border-color: #fecaca;
     }
 
-    .navbar, .sidebar {
-        display: none;
+    /* ---------- Hint discret sous le bouton ---------- */
+    .login-hint {
+        margin-top: 1.5rem;
+        padding-top: 1.25rem;
+        border-top: 1px solid #f1f2f6;
+        text-align: center;
+        font-size: 0.76rem;
+        color: #94a3b8;
+        line-height: 1.5;
     }
+    .login-hint strong { color: #475569; font-weight: 500; }
 
-    .main-content {
-        margin-left: 0;
-        padding: 0;
+    /* ---------- Footer ultra discret ---------- */
+    .login-footer {
+        margin-top: 1.75rem;
+        font-size: 0.68rem;
+        color: #b6bcc7;
+        text-align: center;
+        letter-spacing: 0.015em;
+        opacity: 0.85;
+    }
+    .login-footer a {
+        color: inherit;
+        text-decoration: none;
+        margin: 0 0.35rem;
+        transition: color 0.15s ease;
+    }
+    .login-footer a:hover { color: #64748b; }
+    .login-footer .sep { color: #dde0e7; margin: 0 0.1rem; }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 480px) {
+        .login-stage { padding: 1.75rem 1rem 1.25rem; background-size: 18px 18px; }
+        .login-card { padding: 1.85rem 1.5rem 1.5rem; border-radius: 16px; }
+        .login-brand { margin-bottom: 1.4rem; }
+        .login-heading { margin-bottom: 1.5rem; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="login-container">
-    <div class="login-card">
-        <div class="login-card-header">
-            <img src="{% static 'img/logo.svg' %}" alt="FactureApp Logo">
-            <h1>FactureApp</h1>
-            <p>Connectez-vous à votre compte</p>
-        </div>
+<div class="login-stage">
+    <div class="login-shell">
 
-        <div class="login-card-body">
+        <div class="login-card">
+
+            <div class="login-brand">
+                <img src="{% static 'img/logo.svg' %}" alt="Numa" class="login-brand-logo">
+                <span class="login-brand-name">Numa</span>
+                <span class="login-brand-tag">Facturation</span>
+            </div>
+
+            <div class="login-heading">
+                <h1 class="login-title">Bienvenue</h1>
+                <p class="login-subtitle">Connectez-vous pour accéder à votre espace.</p>
+            </div>
+
             {% if form.non_field_errors %}
-                <div class="alert alert-danger">
-                    {% for error in form.non_field_errors %}
-                        <strong>Erreur:</strong> {{ error }}
-                    {% endfor %}
+                <div class="login-alert login-alert--danger">
+                    {% for error in form.non_field_errors %}{{ error }}{% endfor %}
                 </div>
             {% endif %}
 
@@ -189,51 +318,57 @@
                 {% csrf_token %}
 
                 <div class="form-group">
-                    <label for="{{ form.username.id_for_label }}" class="form-label">
-                        <i class="bi bi-person"></i> Nom d'utilisateur
-                    </label>
-                    {% if form.username.widget.input_type == 'password' %}
-                        {{ form.username }}
-                    {% else %}
-                        <input type="text" name="{{ form.username.name }}" id="{{ form.username.id_for_label }}" class="form-control" placeholder="Votre nom d'utilisateur" required>
-                    {% endif %}
+                    <label for="{{ form.username.id_for_label }}" class="form-label">Identifiant</label>
+                    <input type="text"
+                           name="{{ form.username.name }}"
+                           id="{{ form.username.id_for_label }}"
+                           class="form-control"
+                           placeholder="prenom.nom"
+                           autocomplete="username"
+                           autofocus
+                           required>
                     {% if form.username.errors %}
-                        <div style="color: #ef4444; font-size: 0.8125rem; margin-top: 0.5rem;">
-                            {{ form.username.errors.0 }}
-                        </div>
+                        <div class="field-error">{{ form.username.errors.0 }}</div>
                     {% endif %}
                 </div>
 
                 <div class="form-group">
-                    <label for="{{ form.password.id_for_label }}" class="form-label">
-                        <i class="bi bi-lock"></i> Mot de passe
-                    </label>
-                    <input type="password" name="{{ form.password.name }}" id="{{ form.password.id_for_label }}" class="form-control" placeholder="Votre mot de passe" required>
+                    <label for="{{ form.password.id_for_label }}" class="form-label">Mot de passe</label>
+                    <input type="password"
+                           name="{{ form.password.name }}"
+                           id="{{ form.password.id_for_label }}"
+                           class="form-control"
+                           placeholder="••••••••••"
+                           autocomplete="current-password"
+                           required>
                     {% if form.password.errors %}
-                        <div style="color: #ef4444; font-size: 0.8125rem; margin-top: 0.5rem;">
-                            {{ form.password.errors.0 }}
-                        </div>
+                        <div class="field-error">{{ form.password.errors.0 }}</div>
                     {% endif %}
                 </div>
 
-                <button type="submit" class="btn-login">
-                    <i class="bi bi-box-arrow-in-right"></i> Se connecter
-                </button>
-
-                <div class="forgot-password">
-                    <a href="#">Mot de passe oublié?</a>
+                <div class="form-meta">
+                    <a href="#">Mot de passe oublié ?</a>
                 </div>
+
+                <button type="submit" class="btn-login">Se connecter</button>
             </form>
 
-            <div class="alert alert-info" style="margin-top: 1.5rem;">
-                <i class="bi bi-info-circle"></i>
-                <strong>Démonstration:</strong> Utilisez les identifiants fournis par votre administrateur.
+            <div class="login-hint">
+                <strong>Accès</strong> réservé · contactez votre administrateur pour vos identifiants.
             </div>
+
         </div>
 
-        <div class="login-card-footer">
-            <p>&copy; 2026 FactureApp - Système de Facturation Professionnel</p>
+        <div class="login-footer">
+            © 2026 Numa
+            <span class="sep">·</span>
+            <a href="#">Confidentialité</a>
+            <span class="sep">·</span>
+            <a href="#">Conditions</a>
+            <span class="sep">·</span>
+            <a href="#">Statut</a>
         </div>
+
     </div>
 </div>
 {% endblock %}

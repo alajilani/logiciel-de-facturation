@@ -8,12 +8,12 @@
         <div class="col-md-6">
             <div class="card border-danger">
                 <div class="card-header bg-danger text-white">
-                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Attention</h5>
+                    <h5 class="mb-0">Attention</h5>
                 </div>
                 <div class="card-body">
                     <p class="mb-3">Êtes-vous sûr de vouloir supprimer cette facture?</p>
                     <p class="text-muted"><strong>{{ object.invoice_number }}</strong></p>
-                    <p class="text-muted">{{ object.client.name }} - {{ object.total|floatformat:2 }}€</p>
+                    <p class=\"text-muted\">{{ object.client.nom }} - {{ object.total|floatformat:2 }}€</p>
                     
                     <form method="post" class="d-inline">
                         {% csrf_token %}

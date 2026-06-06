@@ -1,193 +1,882 @@
 {% extends "base.html" %}
 
-{% block title %}Modifier une facture{% endblock %}
+{% block title %}Facture {{ invoice.invoice_number }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .inv-shell { max-width: 1180px; }
+
+    /* Header */
+    .inv-page-head {
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 12px; margin-bottom: 18px;
+    }
+    .inv-page-head h1 {
+        font-size: 1.35rem; font-weight: 600; color: #0f172a; margin: 0;
+        letter-spacing: -0.01em;
+        display: flex; align-items: center; gap: 12px;
+    }
+    .inv-page-head .inv-num { color: #475569; font-weight: 500; }
+    .inv-status {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 10px; border-radius: 6px;
+        font-size: 0.72rem; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.04em;
+        border: 1px solid;
+    }
+    .inv-status::before {
+        content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+    }
+    .inv-st-BROUILLON { color: #64748b; background: #f1f5f9; border-color: #e2e8f0; }
+    .inv-st-VALIDEE   { color: #4f46e5; background: #eef0ff; border-color: #c7d2fe; }
+    .inv-st-ENVOYEE   { color: #b45309; background: #fef3c7; border-color: #fde68a; }
+    .inv-st-PAYEE     { color: #15803d; background: #dcfce7; border-color: #bbf7d0; }
+    .inv-st-PARTIELLEMENT_PAYEE { color: #0e7490; background: #cffafe; border-color: #a5f3fc; }
+    .inv-st-EN_RETARD { color: #b91c1c; background: #fee2e2; border-color: #fecaca; }
+    .inv-st-ANNULEE   { color: #6b7280; background: #f3f4f6; border-color: #e5e7eb; }
+
+    /* Locked banner */
+    .inv-locked {
+        background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412;
+        padding: 10px 16px; border-radius: 10px; font-size: 0.85rem;
+        margin-bottom: 16px;
+        display: flex; align-items: center; gap: 10px;
+    }
+
+    /* Cards */
+    .inv-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        overflow: hidden;
+        margin-bottom: 18px;
+    }
+    .inv-card-head {
+        padding: 14px 20px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .inv-card-head .inv-step {
+        width: 22px; height: 22px; border-radius: 50%;
+        background: #eef0ff; color: #4f46e5;
+        font-size: 0.72rem; font-weight: 600;
+        display: inline-flex; align-items: center; justify-content: center;
+    }
+    .inv-card-head .inv-title {
+        font-size: 0.82rem; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.06em;
+        color: #475569;
+    }
+    .inv-card-head .inv-title-count {
+        font-size: 0.72rem; color: #94a3b8; font-weight: 500;
+        margin-left: 6px; letter-spacing: 0;
+    }
+    .inv-card-body { padding: 20px; }
+
+    /* Fields */
+    .inv-field-label {
+        display: block;
+        font-size: 0.72rem; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.06em;
+        color: #64748b; margin-bottom: 6px;
+    }
+    .inv-field-hint {
+        font-size: 0.72rem; color: #94a3b8; font-style: italic; font-weight: 500;
+    }
+    .inv-card-body .form-control,
+    .inv-card-body .form-select,
+    .inv-card-body select.form-control,
+    .inv-card-body input.form-control,
+    .inv-card-body textarea.form-control {
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        font-size: 0.88rem;
+        padding: 0.5rem 0.7rem;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .inv-card-body .form-control:focus,
+    .inv-card-body .form-select:focus {
+        border-color: #a5b4fc;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+        outline: none;
+    }
+
+    /* Action buttons row */
+    .inv-actions-row {
+        display: flex; flex-wrap: wrap; gap: 8px;
+        padding-top: 6px;
+    }
+    .inv-btn {
+        font-size: 0.85rem; font-weight: 500;
+        padding: 0.5rem 0.95rem; border-radius: 8px;
+        border: 1px solid transparent;
+        display: inline-flex; align-items: center; gap: 6px;
+        transition: all 0.15s ease;
+        text-decoration: none;
+    }
+    .inv-btn-outline { background: #fff; border-color: #e2e8f0; color: #475569; }
+    .inv-btn-outline:hover:not(:disabled) { background: #f4f5f9; color: #0f172a; }
+    .inv-btn-primary {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #fff; border-color: transparent;
+        box-shadow: 0 2px 6px rgba(99, 102, 241, 0.25);
+    }
+    .inv-btn-primary:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+        color: #fff;
+    }
+    .inv-btn-success {
+        background: #16a34a; color: #fff; border-color: transparent;
+    }
+    .inv-btn-success:hover:not(:disabled) { background: #15803d; color: #fff; }
+    .inv-btn-warning {
+        background: #f59e0b; color: #fff; border-color: transparent;
+    }
+    .inv-btn-warning:hover:not(:disabled) { background: #d97706; color: #fff; }
+    .inv-btn-ghost {
+        background: transparent; color: #64748b; border-color: transparent;
+    }
+    .inv-btn-ghost:hover { background: #f4f5f9; color: #334155; }
+    .inv-btn:disabled, .inv-btn.disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
+
+    /* Lines table */
+    .inv-lines-wrap { overflow-x: auto; }
+    table.inv-lines {
+        width: 100%; border-collapse: separate; border-spacing: 0;
+        font-size: 0.88rem;
+    }
+    table.inv-lines thead th {
+        font-size: 0.7rem; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.05em;
+        color: #94a3b8;
+        padding: 10px 12px;
+        border-bottom: 1px solid #f1f5f9;
+        background: #fafbfd;
+        text-align: left;
+        white-space: nowrap;
+    }
+    table.inv-lines tbody td {
+        padding: 14px 12px;
+        border-bottom: 1px solid #f4f5f9;
+        color: #334155; vertical-align: middle;
+    }
+    table.inv-lines tbody tr:hover td { background: #fafbfd; }
+    table.inv-lines tbody tr:last-child td { border-bottom: none; }
+    table.inv-lines .inv-line-product { font-weight: 600; color: #0f172a; }
+    table.inv-lines .inv-line-desc { color: #64748b; font-size: 0.82rem; }
+    table.inv-lines .inv-num-cell { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    table.inv-lines .inv-total-cell { font-weight: 600; color: #0f172a; font-variant-numeric: tabular-nums; }
+    table.inv-lines .inv-actions-cell { width: 80px; text-align: right; }
+
+    .inv-icon-btn {
+        width: 30px; height: 30px; border-radius: 7px;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: transparent; border: 1px solid #e2e8f0; color: #64748b;
+        transition: all 0.15s ease; text-decoration: none;
+    }
+    .inv-icon-btn:hover { background: #f4f5f9; color: #0f172a; }
+    .inv-icon-btn.is-edit:hover { color: #4f46e5; border-color: #c7d2fe; background: #eef0ff; }
+    .inv-icon-btn.is-delete:hover { color: #b91c1c; border-color: #fecaca; background: #fee2e2; }
+    .inv-icon-btn.disabled { opacity: 0.4; pointer-events: none; }
+
+    .inv-empty {
+        padding: 28px 12px; text-align: center;
+        color: #94a3b8; font-size: 0.88rem;
+    }
+    .inv-empty i { font-size: 1.5rem; color: #cbd5e1; display: block; margin-bottom: 6px; }
+
+    /* Add line bar */
+    .inv-add-line {
+        background: #fafbfd;
+        border-top: 1px solid #f1f5f9;
+        padding: 14px 20px;
+    }
+    .inv-add-line .row { --bs-gutter-x: 0.5rem; }
+    .inv-add-line .form-control,
+    .inv-add-line .form-select {
+        font-size: 0.85rem; padding: 0.45rem 0.6rem;
+    }
+    .inv-add-line .inv-add-btn {
+        width: 38px; height: 38px; border-radius: 8px;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #fff; border: none;
+        display: inline-flex; align-items: center; justify-content: center;
+        box-shadow: 0 2px 6px rgba(99, 102, 241, 0.25);
+        transition: all 0.15s ease;
+    }
+    .inv-add-line .inv-add-btn:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(99, 102, 241, 0.35);
+    }
+
+    /* Summary */
+    .inv-summary {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 20px 22px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    .inv-summary-title {
+        font-size: 0.72rem; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.06em;
+        color: #94a3b8; margin-bottom: 14px;
+    }
+    .inv-sum-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 8px 0;
+        font-size: 0.9rem; color: #475569;
+        font-variant-numeric: tabular-nums;
+    }
+    .inv-sum-row.is-discount { color: #b91c1c; }
+    .inv-sum-row.is-paid { color: #15803d; }
+    .inv-sum-divider { border-top: 1px dashed #e2e8f0; margin: 6px 0; }
+    .inv-sum-total {
+        display: flex; justify-content: space-between; align-items: baseline;
+        padding: 14px 16px;
+        margin-top: 10px;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(139, 92, 246, 0.06));
+        border-radius: 10px;
+        border: 1px solid rgba(99, 102, 241, 0.15);
+    }
+    .inv-sum-total .label {
+        font-size: 0.78rem; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.05em; color: #4f46e5;
+    }
+    .inv-sum-total .value {
+        font-size: 1.35rem; font-weight: 700; color: #0f172a;
+        font-variant-numeric: tabular-nums;
+    }
+    .inv-sum-remaining {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 10px 14px; margin-top: 8px;
+        border-radius: 8px;
+        background: #fef3c7; color: #92400e;
+        font-size: 0.88rem; font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+    .inv-sum-remaining.is-zero { background: #dcfce7; color: #15803d; }
+
+    /* Footer actions */
+    .inv-footer {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-top: 22px; flex-wrap: wrap; gap: 10px;
+    }
+
+    /* ===== Add-line refinements ===== */
+    .inv-add-line .form-control,
+    .inv-add-line .form-select {
+        height: 38px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+    }
+    .inv-add-line .form-control:focus,
+    .inv-add-line .form-select:focus {
+        border-color: #a5b4fc;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+        outline: none;
+    }
+    .inv-add-line .inv-field-label {
+        margin-bottom: 4px;
+        font-size: 0.68rem;
+    }
+    .inv-add-line .inv-add-cell {
+        display: flex; align-items: flex-end; justify-content: flex-end;
+        height: 100%;
+    }
+
+    /* ===== Remise globale (collapsible) ===== */
+    .inv-discount-wrap {
+        margin: 4px 0 18px;
+    }
+    .inv-discount-trigger {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: transparent;
+        border: 1px dashed #cbd5e1;
+        color: #475569;
+        font-size: 0.82rem; font-weight: 500;
+        padding: 8px 14px;
+        border-radius: 8px;
+        transition: all 0.15s ease;
+        cursor: pointer;
+    }
+    .inv-discount-trigger:hover {
+        border-color: #a5b4fc; color: #4f46e5;
+        background: #f5f6ff;
+    }
+    .inv-discount-trigger .inv-discount-badge {
+        display: inline-flex; align-items: center;
+        padding: 2px 8px; border-radius: 999px;
+        background: #eef0ff; color: #4f46e5;
+        font-size: 0.7rem; font-weight: 600;
+        margin-left: 4px;
+    }
+    .inv-discount-trigger[aria-expanded="true"] {
+        border-style: solid; border-color: #c7d2fe;
+        background: #f5f6ff; color: #4f46e5;
+    }
+    .inv-discount-trigger .chev { transition: transform 0.2s ease; }
+    .inv-discount-trigger[aria-expanded="true"] .chev { transform: rotate(180deg); }
+
+    .inv-discount-panel {
+        margin-top: 10px;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px 18px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        overflow: hidden;
+        animation: invSlideDown 0.22s ease;
+    }
+    .inv-discount-panel[hidden] { display: none; }
+    @keyframes invSlideDown {
+        from { opacity: 0; transform: translateY(-4px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .inv-discount-panel .inv-or {
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 0.7rem; font-weight: 600;
+        color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em;
+        padding: 0 6px;
+    }
+    .inv-discount-panel .form-control { height: 38px; }
+    .inv-discount-panel .form-control:disabled,
+    .inv-discount-panel .form-control[readonly],
+    .inv-discount-panel .form-control.is-inactive {
+        background: #f8fafc; color: #cbd5e1;
+        cursor: not-allowed;
+    }
+
+    /* ===== Summary refinements (premium) ===== */
+    .inv-summary { padding: 22px 24px; }
+    .inv-summary-title { margin-bottom: 16px; }
+    .inv-sum-row {
+        padding: 6px 0;
+        font-size: 0.86rem;
+        color: #64748b;
+    }
+    .inv-sum-row .label { color: #94a3b8; font-weight: 500; }
+    .inv-sum-row .value { color: #334155; font-weight: 500; }
+    .inv-sum-row.is-strong .label { color: #334155; font-weight: 600; }
+    .inv-sum-row.is-strong .value { color: #0f172a; font-weight: 600; }
+    .inv-sum-divider { margin: 10px 0; }
+
+    .inv-sum-total {
+        padding: 18px 20px;
+        margin-top: 14px;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        border: none;
+        box-shadow: 0 8px 24px -10px rgba(99, 102, 241, 0.6);
+    }
+    .inv-sum-total .label {
+        color: rgba(255,255,255,0.85);
+        font-size: 0.74rem;
+    }
+    .inv-sum-total .value {
+        font-size: 1.7rem; font-weight: 700;
+        color: #fff;
+        letter-spacing: -0.02em;
+    }
+
+    /* ===== Sticky action bar ===== */
+    .inv-action-bar {
+        position: sticky;
+        bottom: 0;
+        z-index: 20;
+        margin: 22px -8px 0;
+        padding: 12px 18px;
+        background: rgba(255,255,255,0.92);
+        backdrop-filter: saturate(180%) blur(10px);
+        -webkit-backdrop-filter: saturate(180%) blur(10px);
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        box-shadow: 0 -2px 16px -8px rgba(15, 23, 42, 0.08);
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 10px;
+    }
+    .inv-action-bar .inv-action-left,
+    .inv-action-bar .inv-action-right {
+        display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .inv-btn-pdf {
+        background: #0f172a; color: #fff; border-color: transparent;
+    }
+    .inv-btn-pdf:hover:not(:disabled) {
+        background: #1e293b; color: #fff;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <h1 class="mb-4"><i class="bi bi-pencil"></i> Facture {{ invoice.invoice_number }}</h1>
-    
-    <!-- Invoice Info -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">Informations de base</h5>
-        </div>
-        <div class="card-body">
-            <form method="post" novalidate class="mb-3">
-                {% csrf_token %}
-                <div class="row">
-                    <div class="col-md-3 mb-3">
-                        <label class="form-label">Client *</label>
+<div class="container-fluid inv-shell">
+
+    <!-- Header -->
+    <div class="inv-page-head">
+        <h1>
+            Facture <span class="inv-num">{{ invoice.invoice_number }}</span>
+            <span class="inv-status inv-st-{{ invoice.statut }}">{{ invoice.get_statut_display }}</span>
+        </h1>
+    </div>
+
+    {% if is_locked %}
+    <div class="inv-locked">
+        <i class="bi bi-lock-fill"></i>
+        Cette facture n'est plus modifiable (hors paiement et statut).
+    </div>
+    {% endif %}
+
+    <!-- Section 1 — Informations facture -->
+    <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="inv-card">
+            <div class="inv-card-head">
+                <span class="inv-step">1</span>
+                <span class="inv-title">Informations facture</span>
+            </div>
+            <div class="inv-card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="inv-field-label">Client *</label>
                         {{ form.client }}
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <label class="form-label">Date</label>
-                        {{ form.date }}
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <label class="form-label">Échéance</label>
-                        {{ form.due_date }}
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <label class="form-label">Paiement</label>
+                    <div class="col-md-6">
+                        <label class="inv-field-label">Mode de règlement prévu</label>
                         {{ form.payment_method }}
                     </div>
                 </div>
-                <button type="submit" name="save_invoice" class="btn btn-primary">
-                    <i class="bi bi-save"></i> Enregistrer les modifications
-                </button>
+                <div class="row g-3 mt-1">
+                    <div class="col-md-6">
+                        <label class="inv-field-label">Date facture</label>
+                        {{ form.date }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="inv-field-label d-flex align-items-center justify-content-between">
+                            <span>Date d'échéance</span>
+                            <small id="due-date-hint" class="inv-field-hint"></small>
+                        </label>
+                        {{ form.due_date }}
+                    </div>
+                </div>
+                <div class="row g-3 mt-1">
+                    <div class="col-12">
+                        <label class="inv-field-label">Notes facture</label>
+                        {{ form.notes }}
+                    </div>
+                </div>
+
+                <div class="inv-actions-row mt-3">
+                    <button type="submit" name="save_draft" class="inv-btn inv-btn-outline" {% if is_locked %}disabled{% endif %}>
+                        <i class="bi bi-floppy"></i> Brouillon
+                    </button>
+                    <button type="submit" name="save_invoice" class="inv-btn inv-btn-primary" {% if is_locked %}disabled{% endif %}>
+                        <i class="bi bi-save"></i> Enregistrer
+                    </button>
+                    <button type="submit" name="validate_invoice" class="inv-btn inv-btn-success" {% if invoice.statut != 'BROUILLON' %}disabled{% endif %}>
+                        <i class="bi bi-check2-circle"></i> Valider la facture
+                    </button>
+                    <button type="submit" name="add_payment" class="inv-btn inv-btn-warning">
+                        <i class="bi bi-cash-coin"></i> Enregistrer un paiement
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- Section 2 — Lignes de facture -->
+    <div class="inv-card">
+        <div class="inv-card-head">
+            <span class="inv-step">2</span>
+            <span class="inv-title">Lignes de facture</span>
+            <span class="inv-title-count">{{ items|length }} {{ items|length|pluralize:"ligne,lignes" }}</span>
+        </div>
+
+        {% if items %}
+        <div class="inv-lines-wrap">
+            <table class="inv-lines">
+                <thead>
+                    <tr>
+                        <th>Produit / Service</th>
+                        <th>Description</th>
+                        <th class="inv-num-cell">Qté</th>
+                        <th class="inv-num-cell">Prix U. HT</th>
+                        <th class="inv-num-cell">TVA</th>
+                        <th class="inv-num-cell">Remise</th>
+                        <th class="inv-num-cell">Total TTC</th>
+                        <th class="inv-actions-cell">&nbsp;</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td class="inv-line-product">{{ item.produit_service.name|default:"—" }}</td>
+                        <td class="inv-line-desc">{{ item.description|default:"—" }}</td>
+                        <td class="inv-num-cell">{{ item.quantite }} {{ item.unite|default:"" }}</td>
+                        <td class="inv-num-cell">{{ item.prix_unitaire_ht|floatformat:2 }} €</td>
+                        <td class="inv-num-cell">{{ item.taux_tva|floatformat:0 }} %</td>
+                        <td class="inv-num-cell">{{ item.remise_pourcentage|floatformat:0 }} %</td>
+                        <td class="inv-num-cell inv-total-cell">{{ item.total_ttc|floatformat:2 }} €</td>
+                        <td class="inv-actions-cell">
+                            <a href="{% url 'invoice-update-item' invoice.id item.id %}"
+                               class="inv-icon-btn is-edit {% if is_locked %}disabled{% endif %}"
+                               title="Modifier">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'invoice-delete-item' invoice.id item.id %}"
+                               class="inv-icon-btn is-delete {% if is_locked %}disabled{% endif %}"
+                               title="Supprimer"
+                               onclick="return confirm('Supprimer cette ligne ?')">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="inv-empty">
+            <i class="bi bi-inbox"></i>
+            Aucune ligne pour le moment. Ajoutez votre premier article ci-dessous.
+        </div>
+        {% endif %}
+
+        <!-- Add line bar -->
+        <div class="inv-add-line">
+            <form method="post" novalidate id="add-item-form">
+                {% csrf_token %}
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="inv-field-label">Produit / Service</label>
+                        {{ item_form.produit_service }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="inv-field-label">Description</label>
+                        {{ item_form.description }}
+                    </div>
+                    <div class="col-md-1">
+                        <label class="inv-field-label">Unité</label>
+                        {{ item_form.unite }}
+                    </div>
+                    <div class="col-md-1">
+                        <label class="inv-field-label">Qté</label>
+                        {{ item_form.quantite }}
+                    </div>
+                    <div class="col-md-1">
+                        <label class="inv-field-label">Prix HT</label>
+                        {{ item_form.prix_unitaire_ht }}
+                    </div>
+                    <div class="col-md-1">
+                        <label class="inv-field-label">TVA %</label>
+                        {{ item_form.taux_tva }}
+                    </div>
+                    <div class="col-md-1">
+                        <label class="inv-field-label">Remise %</label>
+                        {{ item_form.remise_pourcentage }}
+                    </div>
+                    <div class="col-md-1">
+                        <div class="inv-add-cell">
+                            <button type="submit" name="add_item" class="inv-add-btn" {% if is_locked %}disabled{% endif %} title="Ajouter la ligne">
+                                <i class="bi bi-plus-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </form>
         </div>
     </div>
 
-    <!-- Items -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">Articles</h5>
-        </div>
-        <div class="card-body">
-            {% if items %}
-            <div class="table-responsive mb-3">
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Description</th>
-                            <th>Quantité</th>
-                            <th>Prix U.</th>
-                            <th>Total</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in items %}
-                        <tr>
-                            <td>{{ item.description }}</td>
-                            <td>{{ item.quantity }}</td>
-                            <td>{{ item.price|floatformat:2 }}€</td>
-                            <td>{{ item.total|floatformat:2 }}€</td>
-                            <td>
-                                <a href="{% url 'invoice-delete-item' invoice.id item.id %}" class="btn btn-sm btn-outline-danger">
-                                    <i class="bi bi-trash"></i>
-                                </a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+    <!-- Remise globale — collapsible discreet trigger -->
+    {% if not is_locked or invoice.remise_globale_pourcentage > 0 or invoice.remise_globale_montant > 0 %}
+    {% with has_discount=invoice.remise_globale_pourcentage|add:invoice.remise_globale_montant %}
+    <div class="inv-discount-wrap">
+        <button type="button"
+                class="inv-discount-trigger"
+                id="discount-toggle"
+                aria-expanded="{% if has_discount > 0 %}true{% else %}false{% endif %}"
+                aria-controls="discount-panel">
+            <i class="bi bi-tag"></i>
+            <span>{% if has_discount > 0 %}Modifier la remise globale{% else %}Ajouter une remise globale{% endif %}</span>
+            {% if invoice.remise_globale_pourcentage > 0 %}
+            <span class="inv-discount-badge">− {{ invoice.remise_globale_pourcentage|floatformat:0 }} %</span>
+            {% elif invoice.remise_globale_montant > 0 %}
+            <span class="inv-discount-badge">− {{ invoice.remise_globale_montant|floatformat:2 }} €</span>
             {% endif %}
+            <i class="bi bi-chevron-down chev" style="font-size: 0.75rem; margin-left: 2px;"></i>
+        </button>
 
-            <form method="post" novalidate class="border-top pt-3">
+        <div class="inv-discount-panel" id="discount-panel" {% if has_discount == 0 %}hidden{% endif %}>
+            <form method="post" novalidate>
                 {% csrf_token %}
-                <h6 class="mb-3">Ajouter un article</h6>
-                <div class="row">
-                    <div class="col-md-4 mb-2">
-                        {{ item_form.description }}
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-5">
+                        <label class="inv-field-label">Remise en pourcentage</label>
+                        {{ discount_form.remise_globale_pourcentage }}
                     </div>
-                    <div class="col-md-2 mb-2">
-                        {{ item_form.quantity }}
+                    <div class="col-md-1 text-center d-none d-md-flex align-items-end justify-content-center" style="padding-bottom: 10px;">
+                        <span class="inv-or">ou</span>
                     </div>
-                    <div class="col-md-2 mb-2">
-                        {{ item_form.price }}
+                    <div class="col-md-4">
+                        <label class="inv-field-label">Remise en montant €</label>
+                        {{ discount_form.remise_globale_montant }}
                     </div>
-                    <div class="col-md-3 mb-2">
-                        {{ item_form.product }}
-                    </div>
-                    <div class="col-md-1 mb-2">
-                        <button type="submit" name="add_item" class="btn btn-success w-100">
-                            <i class="bi bi-plus"></i>
+                    <div class="col-md-2 text-end">
+                        <button type="submit" name="update_discount" class="inv-btn inv-btn-primary w-100" {% if is_locked %}disabled{% endif %}>
+                            Appliquer
                         </button>
                     </div>
                 </div>
             </form>
         </div>
     </div>
+    {% endwith %}
+    {% endif %}
 
-    <!-- Discounts -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">Réductions</h5>
-        </div>
-        <div class="card-body">
-            <form method="post" novalidate>
-                {% csrf_token %}
-                <div class="row">
-                    <div class="col-md-4">
-                        <h6>Remise</h6>
-                        <div class="mb-2">
-                            <label class="form-label">Pourcentage %</label>
-                            {{ discount_form.remise_percentage }}
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label">Montant €</label>
-                            {{ discount_form.remise_amount }}
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <h6>Rabais</h6>
-                        <div class="mb-2">
-                            <label class="form-label">Pourcentage %</label>
-                            {{ discount_form.rabais_percentage }}
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label">Montant €</label>
-                            {{ discount_form.rabais_amount }}
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <h6>Escompte</h6>
-                        <div class="mb-2">
-                            <label class="form-label">Pourcentage %</label>
-                            {{ discount_form.escompte_percentage }}
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label">Montant €</label>
-                            {{ discount_form.escompte_amount }}
-                        </div>
-                    </div>
-                </div>
-                <button type="submit" name="update_discount" class="btn btn-primary mt-3">
-                    <i class="bi bi-save"></i> Mettre à jour les réductions
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Summary -->
+    <!-- Section 3 — Récapitulatif -->
     <div class="row">
-        <div class="col-md-8"></div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <table class="table table-sm">
-                        <tr>
-                            <td>Sous-total:</td>
-                            <td class="text-end"><strong>{{ invoice.subtotal|floatformat:2 }}€</strong></td>
-                        </tr>
-                        <tr>
-                            <td>Réduction totale:</td>
-                            <td class="text-end">-{{ invoice.total_discount|floatformat:2 }}€</td>
-                        </tr>
-                        <tr>
-                            <td>TVA:</td>
-                            <td class="text-end">{{ invoice.tva_amount|floatformat:2 }}€</td>
-                        </tr>
-                        <tr class="border-top">
-                            <td><strong>Total TTC:</strong></td>
-                            <td class="text-end"><strong>{{ invoice.total|floatformat:2 }}€</strong></td>
-                        </tr>
-                    </table>
+        <div class="col-md-6"></div>
+        <div class="col-md-6">
+            <div class="inv-summary">
+                <div class="inv-summary-title">Récapitulatif</div>
+
+                <div class="inv-sum-row">
+                    <span class="label">Sous-total HT (lignes)</span>
+                    <span class="value">{{ invoice.sous_total_ht|floatformat:2 }} €</span>
                 </div>
+                {% if invoice.total_remise > 0 %}
+                <div class="inv-sum-row is-discount">
+                    <span class="label">Remise globale{% if invoice.remise_globale_pourcentage > 0 %} ({{ invoice.remise_globale_pourcentage|floatformat:0 }} %){% endif %}</span>
+                    <span class="value">− {{ invoice.total_remise|floatformat:2 }} €</span>
+                </div>
+                {% endif %}
+                <div class="inv-sum-row is-strong">
+                    <span class="label">Total HT</span>
+                    <span class="value">{{ invoice.total_ht|floatformat:2 }} €</span>
+                </div>
+                <div class="inv-sum-row">
+                    <span class="label">TVA</span>
+                    <span class="value">{{ invoice.total_tva|floatformat:2 }} €</span>
+                </div>
+
+                <div class="inv-sum-total">
+                    <span class="label">TOTAL TTC</span>
+                    <span class="value">{{ invoice.total_ttc|floatformat:2 }} €</span>
+                </div>
+
+                {% if invoice.amount_paid > 0 %}
+                <div class="inv-sum-row is-paid mt-2">
+                    <span class="label">Payé</span>
+                    <span class="value">{{ invoice.amount_paid|floatformat:2 }} €</span>
+                </div>
+                <div class="inv-sum-remaining {% if invoice.reste_a_payer == 0 %}is-zero{% endif %}">
+                    <span>{% if invoice.reste_a_payer == 0 %}Soldée{% else %}Reste à payer{% endif %}</span>
+                    <span>{{ invoice.reste_a_payer|floatformat:2 }} €</span>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
 
-    <div class="mt-4">
-        <a href="{% url 'invoice-list' %}" class="btn btn-secondary">
-            <i class="bi bi-arrow-left"></i> Retour
-        </a>
-        <a href="{% url 'export-pdf' invoice.id %}" class="btn btn-danger">
-            <i class="bi bi-file-pdf"></i> Exporter PDF
-        </a>
+    <!-- Sticky action bar -->
+    <div class="inv-action-bar">
+        <div class="inv-action-left">
+            <a href="{% url 'invoice-list' %}" class="inv-btn inv-btn-ghost">
+                <i class="bi bi-arrow-left"></i> Retour
+            </a>
+        </div>
+        <div class="inv-action-right">
+            <a href="{% url 'export-pdf' invoice.id %}" class="inv-btn inv-btn-pdf">
+                <i class="bi bi-file-earmark-pdf"></i> Télécharger PDF
+            </a>
+        </div>
     </div>
 </div>
+
+{{ client_conditions_map|json_script:"client-conditions-data" }}
+
+<script>
+// Due date auto-compute (mirrors create form, respects existing saved value)
+(function () {
+    'use strict';
+    const dataEl = document.getElementById('client-conditions-data');
+    if (!dataEl) return;
+    let conditionsMap = {};
+    try { conditionsMap = JSON.parse(dataEl.textContent || '{}'); } catch (e) { return; }
+
+    const clientField  = document.getElementById('id_client');
+    const dateField    = document.getElementById('id_date');
+    const dueDateField = document.getElementById('id_due_date');
+    const hint         = document.getElementById('due-date-hint');
+    if (!clientField || !dateField || !dueDateField) return;
+
+    // On EDIT, the saved due_date is the source of truth. Treat it as manual
+    // until the user explicitly changes the client (intentional reset).
+    let dueIsManual = !!dueDateField.value;
+    let suppressNextDirty = false;
+
+    function condToDays(c) {
+        if (!c) return null;
+        const u = String(c).toUpperCase();
+        if (u === 'IMMEDIAT') return 0;
+        const m = u.match(/^(\d+)_JOURS$/);
+        return m ? parseInt(m[1], 10) : null;
+    }
+    function condLabel(c) {
+        const d = condToDays(c);
+        if (d === null) return '';
+        return d === 0 ? 'Paiement immédiat' : '+ ' + d + ' jours';
+    }
+    function addDaysISO(iso, days) {
+        const p = iso.split('-');
+        if (p.length !== 3) return '';
+        const d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+        d.setUTCDate(d.getUTCDate() + days);
+        const yyyy = d.getUTCFullYear();
+        const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const dd = String(d.getUTCDate()).padStart(2, '0');
+        return yyyy + '-' + mm + '-' + dd;
+    }
+    function setDue(iso) {
+        suppressNextDirty = true;
+        if (dueDateField._flatpickr) {
+            dueDateField._flatpickr.setDate(iso, true);
+        } else {
+            dueDateField.value = iso;
+        }
+    }
+    function recompute(opts) {
+        const force = !!(opts && opts.force);
+        const cid = clientField.value;
+        const base = dateField.value;
+        if (!cid || !base) { if (hint) hint.textContent = ''; return; }
+        const cond = conditionsMap[cid];
+        const days = condToDays(cond);
+        if (hint) hint.textContent = condLabel(cond);
+        if (days === null) return;
+        if (!force && dueIsManual) return;
+        const iso = addDaysISO(base, days);
+        if (iso) setDue(iso);
+        if (force) dueIsManual = false;
+    }
+
+    clientField.addEventListener('change', function () { recompute({ force: true }); });
+    dateField.addEventListener('change',   function () { recompute({ force: false }); });
+    dateField.addEventListener('input',    function () { recompute({ force: false }); });
+    dueDateField.addEventListener('change', function () {
+        if (suppressNextDirty) { suppressNextDirty = false; return; }
+        dueIsManual = true;
+    });
+
+    // Show the hint matching the currently-selected client. Do NOT overwrite due_date.
+    (function initialHint() {
+        const cid = clientField.value;
+        if (!cid) return;
+        if (hint) hint.textContent = condLabel(conditionsMap[cid]);
+    })();
+})();
+
+// Auto-fill item form when a product/service is selected.
+// On product change, ALWAYS overwrite description, unit, price, VAT.
+// This matches a real invoicing app: the chosen product is the source of truth.
+(function () {
+    const productSelect = document.querySelector('#id_produit_service');
+    if (!productSelect) return;
+    const productsData = {{ products_json|safe }};
+
+    function isEmptyOrZero(val) {
+        if (val === '' || val === null || val === undefined) return true;
+        const n = parseFloat(String(val).replace(',', '.'));
+        return !isFinite(n) || n === 0;
+    }
+    function fmtNumber(n) {
+        const v = parseFloat(n);
+        if (!isFinite(v)) return '';
+        return Number.isInteger(v) ? String(v) : v.toFixed(2);
+    }
+
+    productSelect.addEventListener('change', function () {
+        const pid = this.value;
+        const f = document.querySelector('#add-item-form');
+        if (!f) return;
+
+        // No product selected -> reset to blank line, do not keep stale data.
+        if (!pid) {
+            const desc = f.querySelector('#id_description');
+            const price = f.querySelector('#id_prix_unitaire_ht');
+            const tva = f.querySelector('#id_taux_tva');
+            const unite = f.querySelector('#id_unite');
+            if (desc) desc.value = '';
+            if (price) price.value = '';
+            if (tva) tva.value = '';
+            if (unite) unite.value = '';
+            return;
+        }
+
+        const p = productsData[pid];
+        if (!p) return;
+
+        const desc = f.querySelector('#id_description');
+        if (desc) desc.value = p.description || p.name || '';
+
+        const price = f.querySelector('#id_prix_unitaire_ht');
+        if (price) price.value = fmtNumber(p.prix_unitaire_ht);
+
+        const tva = f.querySelector('#id_taux_tva');
+        if (tva) tva.value = fmtNumber(p.taux_tva);
+
+        const unite = f.querySelector('#id_unite');
+        if (unite) unite.value = p.unite || '';
+
+        const qte = f.querySelector('#id_quantite');
+        if (qte && isEmptyOrZero(qte.value)) qte.value = '1';
+    });
+})();
+
+// Remise globale: collapsible toggle + mutual exclusivity (% XOR €).
+// IMPORTANT: we use `readonly` (not `disabled`) so the inactive field is
+// still submitted in POST. Disabled fields are stripped from the form data,
+// which would make the ModelForm silently reject the request.
+(function () {
+    const trigger = document.getElementById('discount-toggle');
+    const panel = document.getElementById('discount-panel');
+    if (trigger && panel) {
+        trigger.addEventListener('click', function () {
+            const open = trigger.getAttribute('aria-expanded') === 'true';
+            trigger.setAttribute('aria-expanded', String(!open));
+            if (open) {
+                panel.setAttribute('hidden', '');
+            } else {
+                panel.removeAttribute('hidden');
+            }
+        });
+    }
+
+    const pct = document.getElementById('id_remise_globale_pourcentage');
+    const amt = document.getElementById('id_remise_globale_montant');
+    if (!pct || !amt) return;
+
+    function num(v) {
+        if (v === '' || v === null || v === undefined) return 0;
+        const n = parseFloat(String(v).replace(',', '.'));
+        return isFinite(n) ? n : 0;
+    }
+    function setInactive(el, inactive, reason) {
+        el.readOnly = inactive;
+        el.title = inactive ? reason : '';
+        el.classList.toggle('is-inactive', inactive);
+        if (inactive && num(el.value) > 0) el.value = '0';
+    }
+    function sync() {
+        const hasPct = num(pct.value) > 0;
+        const hasAmt = num(amt.value) > 0;
+        setInactive(amt, hasPct, 'Désactivé : remise en % déjà saisie');
+        setInactive(pct, hasAmt, 'Désactivé : remise en € déjà saisie');
+    }
+    pct.addEventListener('input', sync);
+    amt.addEventListener('input', sync);
+    sync();
+})();
+</script>
 {% endblock %}

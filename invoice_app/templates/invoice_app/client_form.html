@@ -1,45 +1,359 @@
 {% extends "base.html" %}
 
-{% block title %}Formulaire - Application de Facturation{% endblock %}
+{% block title %}{{ title | default:"Client" }} - Application de Facturation{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <h1 class="mb-4">{{ title | default:"Formulaire" }}</h1>
-    
-    <div class="card">
-        <div class="card-body">
-            <form method="post" enctype="multipart/form-data" novalidate>
-                {% csrf_token %}
-                {% for field in form %}
-                    <div class="mb-3">
-                        <label class="form-label">
-                            {{ field.label }}
-                            {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
-                        </label>
-                        {% if field.widget.input_type == 'textarea' %}
-                            {{ field }}
-                        {% else %}
-                            {{ field }}
-                        {% endif %}
-                        {% if field.errors %}
-                            <div class="text-danger small mt-2">{{ field.errors }}</div>
-                        {% endif %}
-                        {% if field.help_text %}
-                            <small class="text-muted">{{ field.help_text|safe }}</small>
-                        {% endif %}
-                    </div>
-                {% endfor %}
-                
-                <div class="d-flex justify-content-between">
-                    <a href="javascript:history.back()" class="btn btn-secondary">
-                        <i class="bi bi-x-circle"></i> Annuler
-                    </a>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-circle"></i> Enregistrer
-                    </button>
-                </div>
-            </form>
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>{{ title | default:"Nouveau Client" }}</h1>
         </div>
     </div>
+
+    <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        
+        <!-- TYPE CLIENT -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Type de client</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Type de client <span class="text-danger">*</span></label>
+                            <div class="mt-2">
+                                {% for choice_value, choice_label in form.type_client.field.choices %}
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="type_client" 
+                                               id="id_type_client_{{ forloop.counter0 }}" 
+                                               value="{{ choice_value }}"
+                                               {% if form.type_client.value == choice_value %}checked{% endif %}>
+                                        <label class="form-check-label" for="id_type_client_{{ forloop.counter0 }}">
+                                            {{ choice_label }}
+                                        </label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            {% if form.type_client.errors %}
+                                <div class="text-danger small mt-2">{{ form.type_client.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- INFORMATIONS GENERALES -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Informations générales</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.nom.id_for_label }}" class="form-label">
+                                Nom <span class="text-danger">*</span>
+                            </label>
+                            {{ form.nom }}
+                            {% if form.nom.errors %}<div class="text-danger small mt-2">{{ form.nom.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.contact_principal.id_for_label }}" class="form-label">
+                                Contact principal
+                            </label>
+                            {{ form.contact_principal }}
+                            {% if form.contact_principal.errors %}<div class="text-danger small mt-2">{{ form.contact_principal.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row js-entreprise-only" id="row-raison-sociale">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.raison_sociale.id_for_label }}" class="form-label">
+                                Raison sociale <span class="text-danger" data-required-mark>*</span>
+                            </label>
+                            {{ form.raison_sociale }}
+                            {% if form.raison_sociale.errors %}<div class="text-danger small mt-2">{{ form.raison_sociale.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}<div class="text-danger small mt-2">{{ form.email.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.telephone.id_for_label }}" class="form-label">Téléphone</label>
+                            {{ form.telephone }}
+                            {% if form.telephone.errors %}<div class="text-danger small mt-2">{{ form.telephone.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADRESSE FACTURATION -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Adresse de facturation</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="mb-3">
+                            <label for="{{ form.adresse_facturation.id_for_label }}" class="form-label">
+                                Adresse <span class="text-danger">*</span>
+                            </label>
+                            {{ form.adresse_facturation }}
+                            {% if form.adresse_facturation.errors %}<div class="text-danger small mt-2">{{ form.adresse_facturation.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="{{ form.code_postal_facturation.id_for_label }}" class="form-label">
+                                Code postal <span class="text-danger">*</span>
+                            </label>
+                            {{ form.code_postal_facturation }}
+                            {% if form.code_postal_facturation.errors %}<div class="text-danger small mt-2">{{ form.code_postal_facturation.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="{{ form.ville_facturation.id_for_label }}" class="form-label">
+                                Ville <span class="text-danger">*</span>
+                            </label>
+                            {{ form.ville_facturation }}
+                            {% if form.ville_facturation.errors %}<div class="text-danger small mt-2">{{ form.ville_facturation.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="{{ form.pays_facturation.id_for_label }}" class="form-label">
+                                Pays
+                            </label>
+                            {{ form.pays_facturation }}
+                            {% if form.pays_facturation.errors %}<div class="text-danger small mt-2">{{ form.pays_facturation.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADRESSE LIVRAISON -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Adresse de livraison</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="mb-3">
+                            <div class="form-check">
+                                {{ form.livraison_identique_facturation }}
+                                <label class="form-check-label" for="{{ form.livraison_identique_facturation.id_for_label }}">
+                                    Adresse de livraison identique à facturation
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="delivery-address-section">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="mb-3">
+                                <label for="{{ form.adresse_livraison.id_for_label }}" class="form-label">
+                                    Adresse
+                                </label>
+                                {{ form.adresse_livraison }}
+                                {% if form.adresse_livraison.errors %}<div class="text-danger small mt-2">{{ form.adresse_livraison.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.code_postal_livraison.id_for_label }}" class="form-label">
+                                    Code postal
+                                </label>
+                                {{ form.code_postal_livraison }}
+                                {% if form.code_postal_livraison.errors %}<div class="text-danger small mt-2">{{ form.code_postal_livraison.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.ville_livraison.id_for_label }}" class="form-label">
+                                    Ville
+                                </label>
+                                {{ form.ville_livraison }}
+                                {% if form.ville_livraison.errors %}<div class="text-danger small mt-2">{{ form.ville_livraison.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.pays_livraison.id_for_label }}" class="form-label">
+                                    Pays
+                                </label>
+                                {{ form.pays_livraison }}
+                                {% if form.pays_livraison.errors %}<div class="text-danger small mt-2">{{ form.pays_livraison.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- INFORMATIONS COMMERCIALES -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Informations commerciales</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.conditions_paiement.id_for_label }}" class="form-label">
+                                Conditions de paiement
+                            </label>
+                            {{ form.conditions_paiement }}
+                            {% if form.conditions_paiement.errors %}<div class="text-danger small mt-2">{{ form.conditions_paiement.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.statut.id_for_label }}" class="form-label">
+                                Statut
+                            </label>
+                            {{ form.statut }}
+                            {% if form.statut.errors %}<div class="text-danger small mt-2">{{ form.statut.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- INFORMATIONS FISCALES -->
+        <div class="card mb-4 js-entreprise-only" id="card-fiscal">
+            <div class="card-header">
+                <h5 class="mb-0">Informations fiscales</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.numero_tva_intracommunautaire.id_for_label }}" class="form-label">
+                                Numéro TVA intracommunautaire
+                            </label>
+                            {{ form.numero_tva_intracommunautaire }}
+                            {% if form.numero_tva_intracommunautaire.errors %}<div class="text-danger small mt-2">{{ form.numero_tva_intracommunautaire.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.siret_siren.id_for_label }}" class="form-label">
+                                SIRET/SIREN
+                            </label>
+                            {{ form.siret_siren }}
+                            {% if form.siret_siren.errors %}<div class="text-danger small mt-2">{{ form.siret_siren.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NOTES -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Notes internes</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="{{ form.notes_internes.id_for_label }}" class="form-label">
+                        Notes
+                    </label>
+                    {{ form.notes_internes }}
+                    {% if form.notes_internes.errors %}<div class="text-danger small mt-2">{{ form.notes_internes.errors }}</div>{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ACTIONS -->
+        <div class="d-flex justify-content-between mb-4">
+            <a href="{% url 'client-list' %}" class="btn btn-secondary">
+                <i class="bi bi-x-circle"></i> Annuler
+            </a>
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-check-circle"></i> Enregistrer
+            </button>
+        </div>
+    </form>
+
+    <!-- JavaScript pour gérer l'affichage conditionnel -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const typeClientRadios = document.querySelectorAll('input[name="type_client"]');
+            const deliveryAddressSection = document.getElementById('delivery-address-section');
+            const livraisonIdentique = document.getElementById('{{ form.livraison_identique_facturation.id_for_label }}');
+
+            function toggleDeliveryFields() {
+                if (livraisonIdentique && livraisonIdentique.checked) {
+                    deliveryAddressSection.style.display = 'none';
+                } else {
+                    deliveryAddressSection.style.display = 'block';
+                }
+            }
+
+            if (livraisonIdentique) {
+                livraisonIdentique.addEventListener('change', toggleDeliveryFields);
+                toggleDeliveryFields();
+            }
+
+            /* === Conditional entreprise-only fields === */
+            const entrepriseSections = document.querySelectorAll('.js-entreprise-only');
+            const entrepriseFieldNames = ['raison_sociale', 'numero_tva_intracommunautaire', 'siret_siren'];
+            const raisonSocialeField = document.getElementById('{{ form.raison_sociale.id_for_label }}');
+            const requiredMark = document.querySelector('#row-raison-sociale [data-required-mark]');
+
+            function applyClientType() {
+                const checked = document.querySelector('input[name="type_client"]:checked');
+                const isEntreprise = checked && checked.value === 'ENTREPRISE';
+
+                entrepriseSections.forEach(function(el) {
+                    el.style.display = isEntreprise ? '' : 'none';
+                });
+
+                if (isEntreprise) {
+                    if (raisonSocialeField) raisonSocialeField.setAttribute('required', 'required');
+                    if (requiredMark) requiredMark.style.display = '';
+                } else {
+                    if (raisonSocialeField) raisonSocialeField.removeAttribute('required');
+                    if (requiredMark) requiredMark.style.display = 'none';
+                    // Clear hidden entreprise-only values
+                    entrepriseFieldNames.forEach(function(name) {
+                        const f = document.querySelector('[name="' + name + '"]');
+                        if (f) f.value = '';
+                    });
+                }
+            }
+
+            typeClientRadios.forEach(function(r) {
+                r.addEventListener('change', applyClientType);
+            });
+            applyClientType();
+        });
+    </script>
 </div>
 {% endblock %}
